@@ -549,6 +549,7 @@ function useMiniPlayer(audioUrl) {
   }, [audioUrl]);
 
   const toggle = useCallback(() => {
+    if (!audioUrl) return;
     if (!audioRef.current) {
       audioRef.current = new Audio(audioUrl);
       audioRef.current.addEventListener('timeupdate', () => {
@@ -670,7 +671,7 @@ function TrackCard({ track, onDelete, style }) {
               })}
             </div>
             <div className="ad-card-review-count">
-              {track.reviewCount} review · điểm TB {track.averageScore.toFixed(1)}
+              {track.reviewCount} review · điểm TB {(track.averageScore || 0).toFixed(1)}
             </div>
           </div>
         ) : (
