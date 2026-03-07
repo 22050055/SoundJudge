@@ -732,7 +732,8 @@ export default function ArtistDashboard() {
       if (search.trim()) params.set('search', search.trim());
 
       const { data } = await api.get(`/tracks?${params}`);
-      setTracks(data.tracks);
+      console.log("Dữ liệu nhận được:", data);
+      setTracks(data.tracks || []);
       setPagination(data.pagination);
     } catch (err) {
       setError(extractErrorMessage(err, 'Không thể tải danh sách bài nhạc'));
@@ -767,10 +768,10 @@ export default function ArtistDashboard() {
 
   // Summary counts
   const summary = {
-    total:     pagination?.total || tracks.length,
-    completed: tracks.filter(t => t.status === 'completed').length,
-    reviewing: tracks.filter(t => t.status === 'reviewing').length,
-    pending:   tracks.filter(t => t.status === 'pending').length,
+    total: pagination?.total || (tracks?.length || 0),
+    completed: (tracks || []).filter(t => t?.status === 'completed').length,
+    reviewing: (tracks || []).filter(t => t?.status === 'reviewing').length,
+    pending: (tracks || []).filter(t => t?.status === 'pending').length,
   };
 
   const pages = pagination ? Array.from({ length: pagination.pages }, (_, i) => i + 1) : [];
