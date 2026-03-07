@@ -596,7 +596,7 @@ function TrackCard({ track, onDelete, style }) {
   const { playing, progress, currentTime, duration, fmtTime, toggle, seek } = useMiniPlayer(track.audioUrl);
   const st = STATUS_CONFIG[track.status] || STATUS_CONFIG.pending;
   const bd = track.scoreBreakdown;
-  const hasBd = bd && Object.values(bd).some(v => v > 0);
+  const hasBd = bd && typeof bd === 'object' && Object.values(bd).some(v => v > 0);;
   const navigate = useNavigate();
 
   const handleSeek = (e) => {
