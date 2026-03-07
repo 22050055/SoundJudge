@@ -48,8 +48,7 @@ const api = axios.create({
    * Khi build production, cần đặt biến môi trường VITE_API_URL
    * hoặc cấu hình reverse proxy (Nginx...) tương tự.
    */
-  VITE_API_URL=https://soundjudge-backend.onrender.com/api
-  baseURL: 'https://soundjudge-backend.onrender.com/api',
+ 
 
   /** Mọi request JSON đều cần header này */
   headers: {
