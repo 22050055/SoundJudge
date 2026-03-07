@@ -549,7 +549,6 @@ function useMiniPlayer(audioUrl) {
   }, [audioUrl]);
 
   const toggle = useCallback(() => {
-    if (!audioUrl) return;
     if (!audioRef.current) {
       audioRef.current = new Audio(audioUrl);
       audioRef.current.addEventListener('timeupdate', () => {
@@ -596,8 +595,8 @@ function useMiniPlayer(audioUrl) {
 function TrackCard({ track, onDelete, style }) {
   const { playing, progress, currentTime, duration, fmtTime, toggle, seek } = useMiniPlayer(track.audioUrl);
   const st = STATUS_CONFIG[track.status] || STATUS_CONFIG.pending;
-  const bd = track.scoreBreakdown || {};
-  const hasBd = bd && typeof bd === 'object' && Object.values(bd).some(v => v > 0);;
+  const bd = track.scoreBreakdown;
+  const hasBd = bd && Object.values(bd).some(v => v > 0);
   const navigate = useNavigate();
 
   const handleSeek = (e) => {
@@ -671,7 +670,7 @@ function TrackCard({ track, onDelete, style }) {
               })}
             </div>
             <div className="ad-card-review-count">
-              {track.reviewCount} review · điểm TB {(track.averageScore || 0).toFixed(1)}
+              {track.reviewCount} review · điểm TB {track.averageScore.toFixed(1)}
             </div>
           </div>
         ) : (
@@ -733,8 +732,7 @@ export default function ArtistDashboard() {
       if (search.trim()) params.set('search', search.trim());
 
       const { data } = await api.get(`/tracks?${params}`);
-      console.log("Dữ liệu nhận được:", data);
-      setTracks(data.tracks || []);
+      setTracks(data.tracks);
       setPagination(data.pagination);
     } catch (err) {
       setError(extractErrorMessage(err, 'Không thể tải danh sách bài nhạc'));
@@ -769,10 +767,10 @@ export default function ArtistDashboard() {
 
   // Summary counts
   const summary = {
-    total: pagination?.total || (tracks?.length || 0),
-    completed: (tracks || []).filter(t => t?.status === 'completed').length,
-    reviewing: (tracks || []).filter(t => t?.status === 'reviewing').length,
-    pending: (tracks || []).filter(t => t?.status === 'pending').length,
+    total:     pagination?.total || tracks.length,
+    completed: tracks.filter(t => t.status === 'completed').length,
+    reviewing: tracks.filter(t => t.status === 'reviewing').length,
+    pending:   tracks.filter(t => t.status === 'pending').length,
   };
 
   const pages = pagination ? Array.from({ length: pagination.pages }, (_, i) => i + 1) : [];
