@@ -1,14 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axiosConfig';
 import ReportModal from '../common/ReportModal';
+import MusicPlayer from '../common/MusicPlayer';
 
 const GENRES = ['pop','rock','jazz','classical','hiphop','electronic','folk','other'];
 const GENRE_LABEL = { pop:'Pop', rock:'Rock', jazz:'Jazz', classical:'Classical', hiphop:'Hip-Hop', electronic:'Electronic', folk:'Folk', other:'Khác' };
 
 export default function UserDashboard() {
-  const { user } = useAuth();
+  const { user, favorites, toggleFavorite } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('explore');
 
@@ -16,8 +17,12 @@ export default function UserDashboard() {
   const [myTracks,    setMyTracks]    = useState([]);
   const [allTracks,   setAllTracks]   = useState([]);
   const [myReviews,   setMyReviews]   = useState([]);
+  const [favTracks,   setFavTracks]   = useState([]); // Để hiển thị tab thư viện
   const [loading,     setLoading]     = useState(false);
   const [filter,      setFilter]      = useState({ genre: '', search: '' });
+
+  // Playlist playing state
+  const [playingPlaylist, setPlayingPlaylist] = useState(null);
 
   // Report modal
   const [reportTarget, setReportTarget] = useState(null); // { type, id, name }
@@ -50,11 +55,20 @@ export default function UserDashboard() {
     } catch {}
   }, []);
 
+  // Fetch favorites
+  const fetchFavorites = useCallback(async () => {
+    try {
+      const { data } = await api.get('/tracks/favorites');
+      setFavTracks(data.tracks || []);
+    } catch {}
+  }, []);
+
   useEffect(() => {
     if (activeTab === 'my')      fetchMyTracks();
     if (activeTab === 'explore') fetchAllTracks();
     if (activeTab === 'reviews') fetchMyReviews();
-  }, [activeTab, fetchMyTracks, fetchAllTracks, fetchMyReviews]);
+    if (activeTab === 'library') fetchFavorites();
+  }, [activeTab, fetchMyTracks, fetchAllTracks, fetchMyReviews, fetchFavorites]);
 
   const handleDeleteTrack = async (trackId) => {
     if (!window.confirm('Bạn có chắc muốn xóa bài nhạc này?')) return;
@@ -68,10 +82,30 @@ export default function UserDashboard() {
 
   const scoreColor = (s) => s >= 8 ? '#34d399' : s >= 6 ? '#e2c97e' : s >= 4 ? '#f97316' : '#ef4444';
 
+  const handleToggleHeart = async (e, trackId) => {
+    e.stopPropagation();
+    try {
+      await toggleFavorite(trackId);
+      if (activeTab === 'library') {
+        setFavTracks(prev => prev.filter(t => t._id !== trackId));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handlePlayAllFavs = () => {
+    if (favTracks.length > 0) {
+      setPlayingPlaylist(favTracks);
+    }
+  };
+
+  const isFav = (id) => favorites.includes(id);
+
   return (
     <>
       <style>{`
-        .ud-layout { display: flex; max-width: 1250px; margin: 0 auto; padding: 2rem 1.5rem; gap: 2.5rem; }
+        .ud-layout { display: flex; max-width: 1250px; margin: 0 auto; padding: 2rem 1.5rem; gap: 2.5rem; padding-bottom: 120px; }
         @media(max-width: 768px) { .ud-layout { flex-direction: column; gap: 1.5rem; } }
         
         .ud-sidebar { width: 260px; flex-shrink: 0; }
@@ -102,23 +136,34 @@ export default function UserDashboard() {
           position: relative;
         }
         .track-card:hover { border-color: #374151; transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
-        .track-cover {
-          width: 100%; aspect-ratio: 1; object-fit: cover; display: block;
-          background: linear-gradient(135deg, #1f2937, #374151);
-          position: relative;
-        }
+        .track-cover-wrap { position: relative; width: 100%; aspect-ratio: 1; overflow: hidden; }
+        .track-cover { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s; }
+        .track-card:hover .track-cover { transform: scale(1.05); }
         .track-cover-placeholder {
-          width: 100%; aspect-ratio: 1;
+          width: 100%; height: 100%;
           background: linear-gradient(135deg, #1f2937, #111827);
           display: flex; align-items: center; justify-content: center;
           font-size: 3rem; color: #374151;
         }
+        
+        .heart-btn {
+          position: absolute; top: 10px; right: 10px;
+          width: 34px; height: 34px; border-radius: 50%;
+          background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
+          border: 1px solid rgba(255,255,255,0.1);
+          color: #fff; display: flex; align-items: center; justify-content: center;
+          cursor: pointer; transition: all 0.2s; z-index: 2;
+        }
+        .heart-btn:hover { transform: scale(1.1); background: rgba(0,0,0,0.6); }
+        .heart-btn.liked { color: #ef4444; border-color: rgba(239,68,68,0.3); }
+
         .track-body { padding: 0.9rem; }
         .track-title { font-size: 0.9rem; font-weight: 700; color: #f9fafb; margin: 0 0 0.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .track-artist { font-size: 0.78rem; color: #6b7280; margin: 0 0 0.5rem; }
         .track-meta { display: flex; align-items: center; justify-content: space-between; }
         .track-genre { font-size: 0.72rem; color: #4b5563; background: #1f2937; padding: 0.2rem 0.5rem; border-radius: 6px; }
         .track-score { font-size: 0.82rem; font-weight: 700; }
+        
         .track-actions { display: flex; gap: 0.4rem; margin-top: 0.6rem; flex-wrap: wrap; }
         .btn-xs {
           font-size: 0.72rem; padding: 0.3rem 0.6rem; border-radius: 6px;
@@ -129,7 +174,6 @@ export default function UserDashboard() {
         .btn-xs.danger:hover { color: #ef4444; border-color: #ef4444; }
         .btn-xs.report:hover { color: #f97316; border-color: #f97316; }
 
-        /* Explore filter bar */
         .filter-bar { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center; }
         .filter-bar input, .filter-bar select {
           background: #111827; border: 1.5px solid #1f2937; border-radius: 10px;
@@ -137,208 +181,196 @@ export default function UserDashboard() {
           transition: border-color 0.2s; font-family: inherit;
         }
         .filter-bar input { flex: 1; min-width: 180px; }
-        .filter-bar input:focus, .filter-bar select:focus { border-color: #374151; }
         .filter-bar select option { background: #111827; }
 
-        /* My Reviews */
         .review-list { display: flex; flex-direction: column; gap: 0.75rem; }
         .review-item {
           background: #111827; border: 1px solid #1f2937; border-radius: 12px;
           padding: 1rem 1.25rem; display: flex; gap: 1rem; align-items: center;
-          transition: border-color 0.2s;
         }
-        .review-item:hover { border-color: #374151; }
         .review-cover { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; background: #1f2937; flex-shrink: 0; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; }
         .review-info { flex: 1; }
         .review-track-name { font-size: 0.9rem; font-weight: 700; color: #f9fafb; margin: 0 0 0.2rem; }
         .review-comment { font-size: 0.82rem; color: #6b7280; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .review-score-badge {
-          font-size: 1rem; font-weight: 800; width: 42px; height: 42px;
-          border-radius: 10px; display: flex; align-items: center; justify-content: center;
-          background: #1f2937; flex-shrink: 0;
-        }
 
-        /* Upload CTA */
-        .upload-cta {
-          border: 2px dashed #1f2937; border-radius: 16px;
-          padding: 4rem 2rem; text-align: center; cursor: pointer;
-          transition: all 0.2s; margin-bottom: 1.5rem;
+        .lib-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .btn-play-all {
+          padding: 0.6rem 1.25rem; border-radius: 10px; border: none;
+          background: #34d399; color: #0a0a0f; font-weight: 700; font-size: 0.9rem;
+          cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 0.5rem;
         }
-        .upload-cta:hover { border-color: #e2c97e; background: rgba(226,201,126,0.03); }
-        .upload-cta .icon { font-size: 3rem; margin-bottom: 1rem; }
-        .upload-cta h3 { color: #f9fafb; margin: 0 0 0.5rem; font-size: 1.1rem; }
-        .upload-cta p { color: #6b7280; font-size: 0.85rem; margin: 0; }
+        .btn-play-all:hover { transform: scale(1.03); box-shadow: 0 4px 15px rgba(52,211,153,0.3); }
 
+        .global-player-fixed {
+          position: fixed; bottom: 0; left: 0; right: 0; 
+          background: rgba(10,10,15,0.95); backdrop-filter: blur(10px);
+          border-top: 1px solid rgba(255,255,255,0.08); padding: 1rem;
+          z-index: 1000; animation: slideUp 0.4s easeOutQuad;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: none; } }
+
+        .spinner { text-align: center; padding: 3rem; color: #6b7280; }
         .empty { text-align: center; padding: 4rem 2rem; color: #4b5563; }
-        .empty .icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.4; }
-        .spinner { text-align: center; padding: 3rem; color: #6b7280; font-size: 0.9rem; }
       `}</style>
 
       <div className="ud-layout">
-        
-        {/* ── SIDEBAR MENU ─────────────────────────────────── */}
         <div className="ud-sidebar">
           <div className="ud-header">
             <h1>🎵 Chào {user?.name?.split(' ')[0]}!</h1>
-            <p>Khám phá âm nhạc cộng đồng</p>
+            <p>Âm nhạc theo cách của bạn</p>
           </div>
-
           <div className="ud-nav">
             {[
               { id: 'explore', label: '🌐 Khám phá' },
+              { id: 'library', label: '💖 Thư viện' },
               { id: 'my',      label: '🎵 Nhạc của tôi' },
-              { id: 'reviews', label: '✍️ Đánh giá của tôi' },
+              { id: 'reviews', label: '✍️ Đánh giá' },
             ].map((tab) => (
-              <button
-                key={tab.id}
-                className={`ud-sidebar-item${activeTab === tab.id ? ' active' : ''}`}
-                onClick={() => setActiveTab(tab.id)}
-              >
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                className={`ud-sidebar-item${activeTab === tab.id ? ' active' : ''}`}>
                 {tab.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* ── MAIN CONTENT ────────────────────────────────── */}
         <div className="ud-main">
+          {/* ── EXPLORE ── */}
+          {activeTab === 'explore' && (
+            <>
+              <div className="filter-bar">
+                <input placeholder="🔍 Tìm bài nhạc..." value={filter.search}
+                  onChange={(e) => setFilter(p => ({ ...p, search: e.target.value }))}
+                  onKeyDown={(e) => e.key === 'Enter' && fetchAllTracks()} />
+                <select value={filter.genre} onChange={(e) => setFilter(p => ({ ...p, genre: e.target.value }))}>
+                  <option value="">Tất cả thể loại</option>
+                  {GENRES.map(g => <option key={g} value={g}>{GENRE_LABEL[g]}</option>)}
+                </select>
+              </div>
+              {loading ? <div className="spinner">Đang tải...</div> : (
+                <div className="track-grid">
+                  {allTracks.map(track => (
+                    <TrackCard key={track._id} track={track} 
+                      isLiked={isFav(track._id)} onToggleLike={handleToggleHeart}
+                      onClick={() => navigate(`/dashboard/track/${track._id}`)}
+                      onReport={() => setReportTarget({ type: 'track', id: track._id, name: track.title })}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
 
-        {/* ── TAB: KHÁM PHÁ ─────────────────────────────── */}
-        {activeTab === 'explore' && (
-          <>
-            <div className="filter-bar">
-              <input
-                placeholder="🔍 Tìm bài nhạc..."
-                value={filter.search}
-                onChange={(e) => setFilter((p) => ({ ...p, search: e.target.value }))}
-                onKeyDown={(e) => e.key === 'Enter' && fetchAllTracks()}
-              />
-              <select value={filter.genre} onChange={(e) => setFilter((p) => ({ ...p, genre: e.target.value }))}>
-                <option value="">Tất cả thể loại</option>
-                {GENRES.map((g) => <option key={g} value={g}>{GENRE_LABEL[g]}</option>)}
-              </select>
-            </div>
+          {/* ── LIBRARY ── */}
+          {activeTab === 'library' && (
+            <>
+              <div className="lib-header">
+                <h2>Thư viện yêu thích</h2>
+                {favTracks.length > 0 && (
+                  <button className="btn-play-all" onClick={handlePlayAllFavs}>
+                    ▶ Phát tất cả ({favTracks.length})
+                  </button>
+                )}
+              </div>
+              {favTracks.length === 0 ? (
+                <div className="empty"><div className="icon">💖</div><p>Thư viện đang trống. Hãy thả tim bài nhạc bạn thích!</p></div>
+              ) : (
+                <div className="track-grid">
+                  {favTracks.map(track => (
+                    <TrackCard key={track._id} track={track} 
+                      isLiked={true} onToggleLike={handleToggleHeart}
+                      onClick={() => navigate(`/dashboard/track/${track._id}`)}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
 
-            {loading ? (
-              <div className="spinner">Đang tải...</div>
-            ) : allTracks.length === 0 ? (
-              <div className="empty"><div className="icon">🎵</div><p>Chưa có bài nhạc nào</p></div>
-            ) : (
+          {/* ── MY TRACKS ── */}
+          {activeTab === 'my' && (
+            <>
+              <div className="upload-cta" onClick={() => navigate('/dashboard/upload')}>
+                <div className="icon">📤</div>
+                <h3>Upload bài nhạc mới</h3>
+                <p>Chia sẻ cảm hứng với cộng đồng</p>
+              </div>
               <div className="track-grid">
-                {allTracks.map((track) => (
-                  <div className="track-card" key={track._id}>
-                    {track.coverUrl
-                      ? <img className="track-cover" src={track.coverUrl} alt={track.title} onClick={() => navigate(`/dashboard/track/${track._id}`)} />
-                      : <div className="track-cover-placeholder" onClick={() => navigate(`/dashboard/track/${track._id}`)}>🎵</div>
-                    }
-                    <div className="track-body">
-                      <p className="track-title">{track.title}</p>
-                      <p className="track-artist"
-                        onClick={() => navigate(`/dashboard/profile/${track.artist?._id}`)}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        👤 {track.artist?.name}
-                      </p>
-                      <div className="track-meta">
-                        <span className="track-genre">{GENRE_LABEL[track.genre]}</span>
-                        {track.reviewCount > 0 && (
-                          <span className="track-score" style={{ color: scoreColor(track.averageScore) }}>
-                            ⭐ {track.averageScore}
-                          </span>
-                        )}
-                      </div>
-                      <div className="track-actions">
-                        <button className="btn-xs" onClick={() => navigate(`/dashboard/track/${track._id}`)}>Xem</button>
-                        {track.artist?._id !== user?.id && (
-                          <button className="btn-xs report" onClick={() => setReportTarget({ type: 'track', id: track._id, name: track.title })}>
-                            🚩 Báo cáo
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                {myTracks.map(track => (
+                  <TrackCard key={track._id} track={track} hideLike
+                    onClick={() => navigate(`/dashboard/track/${track._id}`)}
+                    actions={<button className="btn-xs danger" onClick={(e) => { e.stopPropagation(); handleDeleteTrack(track._id); }}>🗑️ Xóa</button>}
+                  />
                 ))}
               </div>
-            )}
-          </>
-        )}
+            </>
+          )}
 
-        {/* ── TAB: NHẠC CỦA TÔI ─────────────────────────── */}
-        {activeTab === 'my' && (
-          <>
-            <div className="upload-cta" onClick={() => navigate('/dashboard/upload')}>
-              <div className="icon">📤</div>
-              <h3>Upload bài nhạc mới</h3>
-              <p>Chia sẻ âm nhạc của bạn với cộng đồng</p>
-            </div>
-
-            {myTracks.length === 0 ? (
-              <div className="empty"><div className="icon">🎵</div><p>Bạn chưa đăng bài nhạc nào</p></div>
-            ) : (
-              <div className="track-grid">
-                {myTracks.map((track) => (
-                  <div className="track-card" key={track._id}>
-                    {track.coverUrl
-                      ? <img className="track-cover" src={track.coverUrl} alt={track.title} />
-                      : <div className="track-cover-placeholder">🎵</div>
-                    }
-                    <div className="track-body">
-                      <p className="track-title">{track.title}</p>
-                      <div className="track-meta">
-                        <span className="track-genre">{GENRE_LABEL[track.genre]}</span>
-                        {track.reviewCount > 0 && (
-                          <span className="track-score" style={{ color: scoreColor(track.averageScore) }}>
-                            ⭐ {track.averageScore} ({track.reviewCount})
-                          </span>
-                        )}
-                      </div>
-                      <div className="track-actions">
-                        <button className="btn-xs" onClick={() => navigate(`/dashboard/track/${track._id}`)}>📊 Stats</button>
-                        <button className="btn-xs danger" onClick={() => handleDeleteTrack(track._id)}>🗑️ Xóa</button>
-                      </div>
-                    </div>
+          {/* ── REVIEWS ── */}
+          {activeTab === 'reviews' && (
+            <div className="review-list">
+              {myReviews.map(review => (
+                <div className="review-item" key={review._id}>
+                  {review.track?.coverUrl ? <img className="review-cover" src={review.track.coverUrl} /> : <div className="review-cover">🎵</div>}
+                  <div className="review-info">
+                    <p className="review-track-name">{review.track?.title}</p>
+                    <p className="review-comment">{review.comment}</p>
                   </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
+                  <div style={{ color: scoreColor(review.overallScore), fontWeight:800 }}>{review.overallScore}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
-        {/* ── TAB: ĐÁNH GIÁ CỦA TÔI ────────────────────── */}
-        {activeTab === 'reviews' && (
-          <div className="review-list">
-            {myReviews.length === 0 ? (
-              <div className="empty"><div className="icon">✍️</div><p>Bạn chưa có đánh giá nào</p></div>
-            ) : myReviews.map((review) => (
-              <div className="review-item" key={review._id}>
-                {review.track?.coverUrl
-                  ? <img className="review-cover" src={review.track.coverUrl} alt="" />
-                  : <div className="review-cover">🎵</div>
-                }
-                <div className="review-info">
-                  <p className="review-track-name">{review.track?.title || 'Bài nhạc'}</p>
-                  <p className="review-comment">{review.comment}</p>
-                </div>
-                <div className="review-score-badge" style={{ color: scoreColor(review.overallScore) }}>
-                  {review.overallScore}
-                </div>
-              </div>
-            ))}
+      {/* Global Player */}
+      {playingPlaylist && (
+        <div className="global-player-fixed">
+          <div style={{ maxWidth: 800, margin: '0 auto' }}>
+            <MusicPlayer playlist={playingPlaylist} autoPlay />
           </div>
-        )}
-      </div>
-      </div>
+        </div>
+      )}
 
-      {/* Report Modal */}
       {reportTarget && (
-        <ReportModal
-          isOpen={!!reportTarget}
-          onClose={() => setReportTarget(null)}
-          targetType={reportTarget.type}
-          targetId={reportTarget.id}
-          targetName={reportTarget.name}
-        />
+        <ReportModal isOpen onClose={() => setReportTarget(null)}
+          targetType={reportTarget.type} targetId={reportTarget.id} targetName={reportTarget.name} />
       )}
     </>
+  );
+}
+
+function TrackCard({ track, isLiked, onToggleLike, onClick, onReport, actions, hideLike }) {
+  const navigate = useNavigate();
+  return (
+    <div className="track-card" onClick={onClick}>
+      <div className="track-cover-wrap">
+        {track.coverUrl 
+          ? <img className="track-cover" src={track.coverUrl} alt="" />
+          : <div className="track-cover-placeholder">🎵</div>
+        }
+        {!hideLike && (
+          <button className={`heart-btn ${isLiked ? 'liked' : ''}`} onClick={(e) => onToggleLike(e, track._id)}>
+            {isLiked ? '❤️' : '🤍'}
+          </button>
+        )}
+      </div>
+      <div className="track-body">
+        <p className="track-title">{track.title}</p>
+        <p className="track-artist" onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/profile/${track.artist?._id}`); }} style={{ cursor: 'pointer' }}>
+          👤 {track.artist?.name}
+        </p>
+        <div className="track-meta">
+          <span className="track-genre">{GENRE_LABEL[track.genre]}</span>
+          {track.reviewCount > 0 && <span className="track-score" style={{ color: '#e2c97e' }}>⭐ {track.averageScore}</span>}
+        </div>
+        <div className="track-actions">
+          <button className="btn-xs">Xem chi tiết</button>
+          {onReport && <button className="btn-xs report" onClick={(e) => { e.stopPropagation(); onReport(); }}>🚩 Báo cáo</button>}
+          {actions}
+        </div>
+      </div>
+    </div>
   );
 }

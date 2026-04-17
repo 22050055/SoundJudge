@@ -10,6 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import api, { extractErrorMessage } from '../../api/axiosConfig';
 import RatingForm from '../common/RatingForm';
 import MusicPlayer from '../common/MusicPlayer';
+import ReportModal from '../common/ReportModal';
 
 // ─── Constants ────────────────────────────────────────────────
 
@@ -46,385 +47,127 @@ const fmtDate = (iso) => {
 // ─── CSS ──────────────────────────────────────────────────────
 
 const CSS = `
-
 .ts-root {
-  min-height: 100vh;
-  background: #0a0a0f;
-  font-family: 'DM Sans', sans-serif;
-  color: #e2e8f0;
+  min-height: 100vh; background: #0a0a0f;
+  font-family: 'DM Sans', sans-serif; color: #e2e8f0;
   padding: 2.5rem 2rem 5rem;
 }
-
 .ts-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.8rem;
-  color: #4b5563;
-  text-decoration: none;
-  margin-bottom: 2rem;
-  transition: color 0.15s;
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-size: 0.8rem; color: #4b5563; text-decoration: none;
+  margin-bottom: 2rem; transition: color 0.15s;
 }
 .ts-back:hover { color: #e2c97e; }
 
-/* ── Hero strip ── */
 .ts-hero {
-  display: flex;
-  gap: 1.5rem;
-  align-items: flex-start;
-  background: #111118;
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 20px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
+  display: flex; gap: 1.5rem; align-items: flex-start;
+  background: #111118; border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 20px; padding: 1.5rem; margin-bottom: 2rem;
   animation: tsIn 0.35s cubic-bezier(0.22,1,0.36,1);
 }
 @keyframes tsIn { from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:translateY(0);} }
 
 .ts-hero-cover {
-  width: 110px; height: 110px;
-  border-radius: 14px;
-  object-fit: cover;
-  flex-shrink: 0;
+  width: 110px; height: 110px; border-radius: 14px;
+  object-fit: cover; flex-shrink: 0;
   background: linear-gradient(135deg,#16161f,#1f1f2e);
   display: flex; align-items: center; justify-content: center;
-  font-size: 2.5rem; color: #374151;
-  overflow: hidden;
+  font-size: 2.5rem; color: #374151; overflow: hidden;
 }
 .ts-hero-cover img { width:100%; height:100%; object-fit:cover; }
 
 .ts-hero-info { flex: 1; min-width: 0; }
 .ts-hero-title {
-  font-family: 'Playfair Display', serif;
-  font-size: clamp(1.2rem, 2.5vw, 1.7rem);
-  color: #e2e8f0;
-  margin-bottom: 0.4rem;
+  font-family: 'Playfair Display', serif; font-size: clamp(1.2rem, 2.5vw, 1.7rem);
+  color: #e2e8f0; margin-bottom: 0.4rem;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .ts-hero-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.75rem;
+  display: flex; align-items: center; gap: 0.6rem;
+  flex-wrap: wrap; margin-bottom: 0.75rem;
 }
 .ts-genre-badge {
-  font-size: 0.7rem;
-  padding: 0.18rem 0.55rem;
-  border-radius: 6px;
-  background: rgba(255,255,255,0.05);
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 0.7rem; padding: 0.18rem 0.55rem; border-radius: 6px;
+  background: rgba(255,255,255,0.05); color: #6b7280;
+  text-transform: uppercase; letter-spacing: 0.06em;
 }
-.ts-date { font-size: 0.72rem; color: #374151; }
 .ts-status-badge {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  padding: 0.2rem 0.6rem;
-  border-radius: 20px;
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  font-size: 0.7rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 20px;
 }
 
-.ts-hero-score {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-}
-.ts-hero-score-num {
-  font-family: 'Playfair Display', serif;
-  font-size: 2.8rem;
-  line-height: 1;
-  transition: color 0.3s;
-}
-.ts-hero-score-max { font-size: 1rem; color: #374151; }
-.ts-hero-score-label {
-  font-size: 0.78rem;
-  color: #6b7280;
-  margin-left: 0.25rem;
-}
-
-/* ── Main grid ── */
-.ts-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-}
+.ts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
 @media(max-width:768px){ .ts-grid { grid-template-columns:1fr; } }
 
-/* ── Panel ── */
 .ts-panel {
-  background: #111118;
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 18px;
-  padding: 1.5rem;
-  animation: tsIn 0.4s cubic-bezier(0.22,1,0.36,1) both;
+  background: #111118; border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 18px; padding: 1.5rem; animation: tsIn 0.4s cubic-bezier(0.22,1,0.36,1) both;
 }
 .ts-panel-title {
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #4b5563;
-  margin-bottom: 1.25rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  font-size: 0.72rem; font-weight: 600; letter-spacing: 0.1em;
+  text-transform: uppercase; color: #4b5563; margin-bottom: 1.25rem;
+  display: flex; align-items: center; gap: 0.5rem;
 }
-.ts-panel-title::after {
-  content:'';
-  flex:1;
-  height:1px;
-  background:rgba(255,255,255,0.04);
-}
+.ts-panel-title::after { content:''; flex:1; height:1px; background:rgba(255,255,255,0.04); }
 
-/* ── Radar chart ── */
-.ts-radar-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+.ts-score-row { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.85rem; }
+.ts-score-track { height: 6px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+.ts-score-fill { height: 100%; border-radius: 4px; transition: width 1s cubic-bezier(0.34,1.56,0.64,1); }
 
-/* ── Score bars ── */
-.ts-score-list { display: flex; flex-direction: column; gap: 0.85rem; }
-.ts-score-row { display: flex; flex-direction: column; gap: 0.3rem; }
-.ts-score-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.ts-score-label {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.82rem;
-  color: #9ca3af;
-}
-.ts-score-icon { font-size: 0.9rem; }
-.ts-score-val {
-  font-family: 'Playfair Display', serif;
-  font-size: 1.05rem;
-}
-.ts-score-track {
-  height: 6px;
-  background: rgba(255,255,255,0.06);
-  border-radius: 4px;
-  overflow: hidden;
-}
-.ts-score-fill {
-  height: 100%;
-  border-radius: 4px;
-  transition: width 1s cubic-bezier(0.34,1.56,0.64,1);
-}
-
-/* ── No reviews placeholder ── */
-.ts-no-reviews {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 3rem 1rem;
-  text-align: center;
-}
-.ts-no-reviews-icon { font-size: 2.5rem; opacity: 0.2; }
-.ts-no-reviews h4 {
-  font-family: 'Playfair Display', serif;
-  color: #374151;
-  font-size: 1rem;
-}
-.ts-no-reviews p { font-size: 0.82rem; color: #1f2937; max-width: 280px; }
-
-/* ── Progress ring ── */
-.ts-ring { transform: rotate(-90deg); }
-
-/* ── Review cards ── */
 .ts-reviews-section {
-  background: #111118;
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 18px;
-  padding: 1.5rem;
-  animation: tsIn 0.5s cubic-bezier(0.22,1,0.36,1) both;
+  background: #111118; border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 18px; padding: 1.5rem; animation: tsIn 0.5s cubic-bezier(0.22,1,0.36,1) both;
 }
-.ts-reviews-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1rem;
-}
+.ts-reviews-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; }
 
 .ts-review-card {
-  background: #0d0d14;
-  border: 1px solid rgba(255,255,255,0.05);
-  border-radius: 14px;
-  padding: 1.2rem;
-  transition: border-color 0.2s;
-  animation: tsIn 0.3s cubic-bezier(0.22,1,0.36,1) both;
+  background: #0d0d14; border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 14px; padding: 1.2rem; position: relative;
+  transition: border-color 0.2s; animation: tsIn 0.3s cubic-bezier(0.22,1,0.36,1) both;
 }
 .ts-review-card:hover { border-color: rgba(226,201,126,0.1); }
 
-.ts-reviewer-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+.ts-report-btn {
+  position: absolute; top: 1rem; right: 1rem;
+  background: none; border: none; color: #374151;
+  font-size: 0.85rem; cursor: pointer; transition: color 0.2s;
 }
-.ts-reviewer-avatar {
-  width: 36px; height: 36px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1.5px solid rgba(226,201,126,0.2);
-  background: linear-gradient(135deg,#1f1f2e,#2d2d3a);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #e2c97e;
-  letter-spacing: 0.04em;
-  flex-shrink: 0;
-  overflow: hidden;
-}
-.ts-reviewer-avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
-.ts-reviewer-info { flex: 1; min-width: 0; }
-.ts-reviewer-name { font-size: 0.875rem; font-weight: 600; color: #d1d5db; }
-.ts-reviewer-rep  { font-size: 0.7rem; color: #4b5563; }
-.ts-review-overall {
-  margin-left: auto;
-  font-family: 'Playfair Display', serif;
-  font-size: 1.4rem;
-}
-.ts-review-date { font-size: 0.7rem; color: #374151; margin-top: 1px; }
+.ts-report-btn:hover { color: #f87171; }
 
-/* mini score grid in review card */
-.ts-review-scores {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 0.3rem;
-  margin-bottom: 0.85rem;
+.ts-fav-btn {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.5rem 1rem; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.03); color: #9ca3af;
+  font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
 }
-.ts-mini-score {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.2rem;
-}
-.ts-mini-score-val {
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-.ts-mini-score-lbl {
-  font-size: 0.58rem;
-  color: #374151;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
+.ts-fav-btn:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.2); }
+.ts-fav-btn.active { color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.05); }
 
-/* comment */
-.ts-review-comment {
-  font-size: 0.82rem;
-  color: #6b7280;
-  line-height: 1.65;
-  border-left: 2px solid rgba(226,201,126,0.15);
-  padding-left: 0.75rem;
-}
-
-/* time markers */
-.ts-time-markers {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  margin-top: 0.85rem;
-}
-.ts-time-marker {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  font-size: 0.77rem;
-}
-.ts-time-badge {
-  flex-shrink: 0;
-  padding: 0.12rem 0.45rem;
-  border-radius: 6px;
-  background: rgba(226,201,126,0.08);
-  color: #c8a84b;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 0.68rem;
-  font-weight: 600;
-}
-.ts-time-note { color: #4b5563; line-height: 1.5; }
-
-/* ── Loading skeleton ── */
 .ts-skel-block {
-  border-radius: 18px;
-  background: linear-gradient(90deg,#16161f 25%,#1f1f2e 50%,#16161f 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 18px; background: linear-gradient(90deg,#16161f 25%,#1f1f2e 50%,#16161f 75%);
+  background-size: 200% 100%; animation: shimmer 1.4s ease-in-out infinite;
 }
 @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-
-/* ── Error ── */
-.ts-error {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
-  gap: 1rem;
-  text-align: center;
-  color: #4b5563;
-}
-.ts-error-icon { font-size:3rem; opacity:0.3; }
-.ts-error h3 { font-family:'Playfair Display',serif; color:#374151; }
-.ts-error p   { font-size:0.85rem; max-width:300px; line-height:1.6; }
-.ts-error-retry {
-  padding:0.55rem 1.2rem;
-  border-radius:10px;
-  border:1px solid rgba(226,201,126,0.2);
-  background:rgba(226,201,126,0.06);
-  color:#e2c97e;
-  font-family:'DM Sans',sans-serif;
-  font-size:0.85rem;
-  cursor:pointer;
-  transition:background 0.15s;
-}
-.ts-error-retry:hover { background:rgba(226,201,126,0.1); }
-
-@media(max-width:640px){
-  .ts-root { padding:1.5rem 1rem 3rem; }
-  .ts-hero { flex-direction:column; }
-  .ts-hero-cover { width:80px; height:80px; }
-}
 `;
 
 // ─── SVG Radar Chart ──────────────────────────────────────────
 
 function RadarChart({ scores, size = 220 }) {
-  const cx = size / 2;
-  const cy = size / 2;
-  const radius = (size / 2) * 0.72;
-  const n = CRITERIA.length;
-  const MAX = 10;
+  const cx = size / 2, cy = size / 2, radius = (size / 2) * 0.72;
+  const n = CRITERIA.length, MAX = 10;
+  const angleStep = (2 * Math.PI) / n, startAngle = -Math.PI / 2;
 
-  const angleStep = (2 * Math.PI) / n;
-  const startAngle = -Math.PI / 2;
+  const polygonPoints = (scale) => CRITERIA.map((_, i) => {
+    const angle = startAngle + i * angleStep;
+    const r = radius * scale;
+    return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)];
+  });
 
-  // Polygon points for a given scale
-  const polygonPoints = (scale) =>
-    CRITERIA.map((_, i) => {
-      const angle = startAngle + i * angleStep;
-      const r = radius * scale;
-      return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)];
-    });
-
-  // Axis points
   const axisPoints = CRITERIA.map((_, i) => {
     const angle = startAngle + i * angleStep;
     return [cx + radius * Math.cos(angle), cy + radius * Math.sin(angle)];
   });
 
-  // Score polygon
   const scorePoints = CRITERIA.map(({ key }, i) => {
     const val = scores?.[key] || 0;
     const scale = val / MAX;
@@ -432,246 +175,89 @@ function RadarChart({ scores, size = 220 }) {
     return [cx + radius * scale * Math.cos(angle), cy + radius * scale * Math.sin(angle)];
   });
 
-  const toPath = (pts) =>
-    pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join(' ') + ' Z';
-
-  const gridLevels = [0.25, 0.5, 0.75, 1.0];
-
-  // Label position
-  const labelPos = (i, extraRadius = 18) => {
-    const angle = startAngle + i * angleStep;
-    const r = radius + extraRadius;
-    return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)];
-  };
-
+  const toPath = (pts) => pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join(' ') + ' Z';
   const hasScores = scores && Object.values(scores).some(v => v > 0);
 
   return (
     <svg width={size + 60} height={size + 60} viewBox={`-30 -30 ${size+60} ${size+60}`}>
-      {/* Grid circles */}
-      {gridLevels.map((level, li) => (
-        <polygon key={li}
-          points={polygonPoints(level).map(p => p.join(',')).join(' ')}
-          fill="none"
-          stroke="rgba(255,255,255,0.05)"
-          strokeWidth="1"
-        />
+      {[0.25, 0.5, 0.75, 1.0].map((level, li) => (
+        <polygon key={li} points={polygonPoints(level).map(p => p.join(',')).join(' ')}
+          fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
       ))}
-
-      {/* Axis lines */}
       {axisPoints.map(([ax, ay], i) => (
-        <line key={i}
-          x1={cx} y1={cy}
-          x2={ax} y2={ay}
-          stroke="rgba(255,255,255,0.06)"
-          strokeWidth="1"
-        />
+        <line key={i} x1={cx} y1={cy} x2={ax} y2={ay} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
       ))}
-
-      {/* Score area */}
       {hasScores && (
         <>
-          <path
-            d={toPath(scorePoints)}
-            fill="rgba(226,201,126,0.12)"
-            stroke="#e2c97e"
-            strokeWidth="1.5"
-            strokeLinejoin="round"
-          />
-          {/* Score dots */}
-          {scorePoints.map(([px, py], i) => (
-            <circle key={i} cx={px} cy={py} r={3}
-              fill="#e2c97e" stroke="#0a0a0f" strokeWidth="1.5" />
-          ))}
+          <path d={toPath(scorePoints)} fill="rgba(226,201,126,0.12)" stroke="#e2c97e" strokeWidth="1.5" />
+          {scorePoints.map(([px, py], i) => <circle key={i} cx={px} cy={py} r={3} fill="#e2c97e" />)}
         </>
       )}
-
-      {/* Center dot */}
-      <circle cx={cx} cy={cy} r={3} fill="rgba(255,255,255,0.08)" />
-
-      {/* Labels */}
       {CRITERIA.map(({ label }, i) => {
-        const [lx, ly] = labelPos(i);
-        return (
-          <text key={i}
-            x={lx} y={ly}
-            textAnchor="middle"
-            dominantBaseline="central"
-            fill="#6b7280"
-            fontSize="9"
-            fontFamily="'DM Sans', sans-serif"
-            fontWeight="500"
-          >
-            {label}
-          </text>
-        );
-      })}
-
-      {/* Score values inside */}
-      {hasScores && scorePoints.map(([px, py], i) => {
-        const val = scores[CRITERIA[i].key];
-        if (!val) return null;
         const angle = startAngle + i * angleStep;
-        const tx = px + 10 * Math.cos(angle);
-        const ty = py + 10 * Math.sin(angle);
-        return (
-          <text key={i}
-            x={tx} y={ty}
-            textAnchor="middle"
-            dominantBaseline="central"
-            fill="#e2c97e"
-            fontSize="8.5"
-            fontFamily="'Playfair Display', serif"
-            fontWeight="600"
-          >
-            {val}
-          </text>
-        );
+        const [lx, ly] = [cx + (radius+18) * Math.cos(angle), cy + (radius+18) * Math.sin(angle)];
+        return <text key={i} x={lx} y={ly} textAnchor="middle" dominantBaseline="central" fill="#6b7280" fontSize="9">{label}</text>;
       })}
     </svg>
   );
 }
 
-// ─── Animated score bar ───────────────────────────────────────
+// ─── Reviewer Card ──────────────────────────────────────────
 
-function ScoreBar({ criterion, value, delay = 0 }) {
-  const [width, setWidth] = useState(0);
-  const labelInfo = getScoreLabel(value);
-
-  useEffect(() => {
-    const t = setTimeout(() => setWidth((value / 10) * 100), 100 + delay);
-    return () => clearTimeout(t);
-  }, [value, delay]);
-
-  return (
-    <div className="ts-score-row">
-      <div className="ts-score-header">
-        <div className="ts-score-label">
-          <span className="ts-score-icon">{criterion.icon}</span>
-          {criterion.label}
-        </div>
-        <span className="ts-score-val" style={{ color: labelInfo.color }}>
-          {value ? value.toFixed(1) : '—'}
-        </span>
-      </div>
-      <div className="ts-score-track">
-        <div className="ts-score-fill"
-          style={{ width: `${width}%`, background: labelInfo.color }} />
-      </div>
-    </div>
-  );
-}
-
-// ─── Reviewer card ────────────────────────────────────────────
-
-function ReviewerCard({ review, style }) {
+function ReviewerCard({ review, onReport, style }) {
   const [expanded, setExpanded] = useState(false);
+  const { user } = useAuth();
   const overallInfo = getScoreLabel(review.overallScore || 0);
-
-  const initials = (name = '') =>
-    name.split(' ').map(w => w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
-
-  const fmtTime = (sec) => {
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m}:${s.toString().padStart(2,'0')}`;
-  };
 
   return (
     <div className="ts-review-card" style={style}>
-      {/* Header */}
+      {user && user.id !== review.reviewer?._id && (
+        <button className="ts-report-btn" onClick={() => onReport(review)} title="Báo cáo đánh giá">🚩</button>
+      )}
       <div className="ts-reviewer-header">
         <div className="ts-reviewer-avatar">
-          {review.reviewer?.avatarUrl
-            ? <img src={review.reviewer.avatarUrl} alt="" />
-            : initials(review.reviewer?.name)}
+          {review.reviewer?.avatarUrl ? <img src={review.reviewer.avatarUrl} alt="" /> : review.reviewer?.name?.[0]?.toUpperCase()}
         </div>
         <div className="ts-reviewer-info">
           <div className="ts-reviewer-name">{review.reviewer?.name || 'Ẩn danh'}</div>
-          <div className="ts-reviewer-rep">
-            {review.reviewer?.reputationScore || 0} pts ·{' '}
-            {review.reviewer?.totalReviews || 0} reviews
-          </div>
+          <div className="ts-reviewer-rep">{review.reviewer?.reputationScore || 0} pts · {review.reviewer?.totalReviews || 0} reviews</div>
         </div>
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'2px' }}>
-          <span className="ts-review-overall" style={{ color: overallInfo.color }}>
-            {(review.overallScore || 0).toFixed(1)}
-          </span>
-          <span style={{ fontSize:'0.65rem', color:overallInfo.color, opacity:0.7 }}>
-            {overallInfo.label}
-          </span>
+        <div style={{ textAlign:'right' }}>
+          <div className="ts-review-overall" style={{ color: overallInfo.color }}>{(review.overallScore || 0).toFixed(1)}</div>
+          <div style={{ fontSize:'0.65rem', color:overallInfo.color, opacity:0.7 }}>{overallInfo.label}</div>
         </div>
       </div>
-
-      {/* Mini scores grid */}
-      <div className="ts-review-scores">
-        {CRITERIA.map(({ key, label }) => {
-          const val = review.scores?.[key];
-          const ci = getScoreLabel(val || 0);
-          return (
-            <div key={key} className="ts-mini-score">
-              <span className="ts-mini-score-val" style={{ color: ci.color }}>
-                {val ?? '—'}
-              </span>
-              <span className="ts-mini-score-lbl">{label.slice(0,3)}</span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Comment */}
       <div className="ts-review-comment">
-        {expanded
-          ? review.comment
-          : review.comment?.slice(0, 180) + (review.comment?.length > 180 ? '…' : '')}
-        {review.comment?.length > 180 && (
-          <button
-            onClick={() => setExpanded(e => !e)}
-            style={{ background:'none', border:'none', color:'#e2c97e', cursor:'pointer',
-              fontSize:'0.78rem', marginLeft:'0.3rem', padding:0 }}>
+        {expanded ? review.comment : review.comment?.slice(0, 160) + (review.comment?.length > 160 ? '...' : '')}
+        {review.comment?.length > 160 && (
+          <button onClick={() => setExpanded(!expanded)} style={{ background:'none', border:'none', color:'#e2c97e', cursor:'pointer', fontSize:'0.75rem', marginLeft:'5px' }}>
             {expanded ? 'Thu gọn' : 'Xem thêm'}
           </button>
         )}
       </div>
-
-      {/* Time markers */}
-      {review.timeMarkers?.length > 0 && (
-        <div className="ts-time-markers">
-          {review.timeMarkers.map((tm, i) => (
-            <div key={i} className="ts-time-marker">
-              <span className="ts-time-badge">⏱ {fmtTime(tm.atSecond)}</span>
-              <span className="ts-time-note">{tm.note}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Date */}
-      <div className="ts-review-date" style={{ marginTop:'0.75rem' }}>
-        {fmtDate(review.createdAt)}
-      </div>
+      <div className="ts-review-date" style={{ marginTop:'0.8rem' }}>{fmtDate(review.createdAt)}</div>
     </div>
   );
 }
 
-// ─── Main Component ────────────────────────────────────────────
+// ─── Main Component ──────────────────────────────────────────
 
 export default function TrackStats() {
   const { id } = useParams();
-  const { user } = useAuth();
-  const [data,    setData]    = useState(null);
+  const { user, favorites, toggleFavorite } = useAuth();
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState('');
-  const [showRatingForm, setShowRatingForm] = useState(false);
+  const [error, setError] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [reportTarget, setReportTarget] = useState(null);
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
-    setError('');
     try {
       const { data: res } = await api.get(`/tracks/${id}/stats`);
       setData(res);
     } catch (err) {
-      setError(extractErrorMessage(err, 'Không thể tải thống kê bài nhạc'));
+      setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -679,275 +265,116 @@ export default function TrackStats() {
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
 
-  // ── Loading ──────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <>
-        <style>{CSS}</style>
-        <div className="ts-root">
-          <Link to="/dashboard/home" className="ts-back">← Quay lại</Link>
-          <div className="ts-skel-block" style={{ height:160, marginBottom:'2rem' }} />
-          <div className="ts-grid" style={{ marginBottom:'2rem' }}>
-            <div className="ts-skel-block" style={{ height:320 }} />
-            <div className="ts-skel-block" style={{ height:320 }} />
-          </div>
-          <div className="ts-skel-block" style={{ height:200 }} />
-        </div>
-      </>
-    );
-  }
+  if (loading) return <div className="ts-root"><style>{CSS}</style><div className="ts-skel-block" style={{height:400}} /></div>;
+  if (error || !data) return <div className="ts-root"><style>{CSS}</style><h3>{error || 'Lỗi dữ liệu'}</h3></div>;
 
-  // ── Error ────────────────────────────────────────────────────
-  if (error) {
-    return (
-      <>
-        <style>{CSS}</style>
-        <div className="ts-root">
-          <Link to="/dashboard/home" className="ts-back">← Quay lại</Link>
-          <div className="ts-error">
-            <div className="ts-error-icon">⚠</div>
-            <h3>Không thể tải dữ liệu</h3>
-            <p>{error}</p>
-            <button className="ts-error-retry" onClick={fetchStats}>Thử lại</button>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  const { track, reviews = [], summary } = data || {};
-  const st     = STATUS_CONFIG[track?.status] || STATUS_CONFIG.pending;
-  const hasSc  = summary?.averageScore > 0;
-  const breakdown = summary?.scoreBreakdown || {};
-  const overallInfo = hasSc ? getScoreLabel(summary.averageScore) : null;
-
-  // Status progress (3 reviews = completed)
-  const progressPct = Math.min(100, ((summary?.reviewCount || 0) / 3) * 100);
+  const { track, reviews = [], summary } = data;
+  const isLiked = favorites.includes(track?._id);
+  const overallLabel = getScoreLabel(summary?.averageScore || 0);
 
   return (
     <>
       <style>{CSS}</style>
       <div className="ts-root">
-        <Link to="/dashboard/home" className="ts-back">← Quay lại</Link>
+        <Link to="/dashboard/home" className="ts-back">← Quay lại Dashboard</Link>
 
-        {/* ── Hero ──────────────────────────────────────────── */}
+        {/* Hero */}
         <div className="ts-hero">
           <div className="ts-hero-cover">
-            {track?.coverUrl
-              ? <img src={track.coverUrl} alt={track.title} />
-              : '♪'}
+            {track?.coverUrl ? <img src={track.coverUrl} /> : '♪'}
           </div>
-
           <div className="ts-hero-info">
             <div className="ts-hero-title">{track?.title}</div>
-            <div style={{ color: '#9ca3af', marginBottom: '0.4rem', fontSize: '0.85rem' }}>
-              bởi <Link to={`/dashboard/profile/${track?.artist?._id}`} style={{ color: '#e2c97e', textDecoration: 'none' }}>
-                {track?.artist?.name}
-              </Link>
+            <div style={{ color: '#9ca3af', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+              bởi <Link to={`/dashboard/profile/${track?.artist?._id}`} style={{ color:'#e2c97e', textDecoration:'none' }}>{track?.artist?.name}</Link>
             </div>
             <div className="ts-hero-meta">
-              <span className="ts-genre-badge">
-                {track?.genre}
-              </span>
-              <span className="ts-date">{fmtDate(track?.createdAt)}</span>
-              <span className="ts-status-badge" style={{ color:st.color, background:st.bg }}>
-                {st.label}
-              </span>
-            </div>
-
-            <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', marginTop:'0.25rem' }}>
-              <div style={{
-                flex:1, height:4,
-                background:'rgba(255,255,255,0.06)',
-                borderRadius:4, overflow:'hidden',
-              }}>
-                <div style={{
-                  width:`${progressPct}%`, height:'100%',
-                  background: track?.status === 'completed'
-                    ? '#34d399'
-                    : 'linear-gradient(90deg,#e2c97e,#c8a84b)',
-                  borderRadius:4,
-                  transition:'width 1s cubic-bezier(0.34,1.56,0.64,1)',
-                }} />
-              </div>
-              <span style={{ fontSize:'0.72rem', color:'#4b5563', whiteSpace:'nowrap' }}>
-                {summary?.reviewCount || 0} reviews
+              <span className="ts-genre-badge">{track?.genre}</span>
+              <span className="ts-status-badge" style={{ background: STATUS_CONFIG[track?.status]?.bg, color: STATUS_CONFIG[track?.status]?.color }}>
+                {STATUS_CONFIG[track?.status]?.label}
               </span>
             </div>
             
-            {/* Action buttons */}
-            <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+              <button className={`ts-fav-btn ${isLiked ? 'active' : ''}`} onClick={() => toggleFavorite(track._id)}>
+                {isLiked ? '❤️ Đã thích' : '🤍 Yêu thích'}
+              </button>
+
               {user && user.id !== track?.artist?._id && !reviews.some(r => r.reviewer?._id === user.id) && (
-                <button
-                  onClick={() => setShowRatingForm(true)}
-                  style={{
-                    padding: '0.5rem 1rem', background: '#e2c97e', color: '#0a0a0f',
-                    border: 'none', borderRadius: '8px', cursor: 'pointer',
-                    fontWeight: 'bold', fontSize: '0.85rem'
-                  }}
-                >
+                <button onClick={() => setShowForm(true)} style={{ padding:'0.5rem 1rem', background:'#e2c97e', border:'none', borderRadius:10, fontWeight:700, cursor:'pointer' }}>
                   ✍️ Viết đánh giá
                 </button>
               )}
+
+              <button className="ts-fav-btn" onClick={() => setReportTarget({ type:'track', id:track._id, name:track.title })}>
+                🚩 Báo cáo
+              </button>
             </div>
           </div>
 
-          {/* Overall score */}
-          {hasSc && (
-            <div style={{ flexShrink:0, textAlign:'right' }}>
-              <div className="ts-hero-score">
-                <span className="ts-hero-score-num"
-                  style={{ color: overallInfo.color }}>
-                  {summary.averageScore.toFixed(2)}
-                </span>
-                <span className="ts-hero-score-max">/10</span>
-              </div>
-              <div className="ts-hero-score-label" style={{ color:overallInfo.color }}>
-                {overallInfo.label}
-              </div>
+          {summary?.averageScore > 0 && (
+            <div style={{ textAlign:'right' }}>
+              <div style={{ fontSize:'2.5rem', fontWeight:800, color:overallLabel.color, fontFamily:'serif' }}>{summary.averageScore.toFixed(1)}</div>
+              <div style={{ fontSize:'0.8rem', color:overallLabel.color, opacity:0.8 }}>{overallLabel.label}</div>
             </div>
           )}
         </div>
 
-        {/* ── Music Player ───────────────────────────────────── */}
-        {track?.audioUrl && (
-          <div style={{ marginBottom: '2rem' }}>
-            <MusicPlayer 
-              audioUrl={track.audioUrl} 
-              title={track.title} 
-              artist={track.artist?.name} 
-              coverUrl={track.coverUrl} 
-            />
-          </div>
-        )}
+        {/* Player */}
+        <div style={{ marginBottom:'2rem' }}>
+          <MusicPlayer audioUrl={track?.audioUrl} title={track?.title} artist={track?.artist?.name} coverUrl={track?.coverUrl} />
+        </div>
 
-        {/* ── Two-column grid ────────────────────────────────── */}
+        {/* Stats Grid */}
         <div className="ts-grid">
-          {/* Radar chart */}
-          <div className="ts-panel" style={{ animationDelay:'0.05s' }}>
-            <div className="ts-panel-title"><span>📡</span> Biểu đồ radar</div>
-            {hasSc ? (
-              <div className="ts-radar-wrap">
-                <RadarChart scores={breakdown} size={220} />
-              </div>
-            ) : (
-              <div className="ts-no-reviews">
-                <div className="ts-no-reviews-icon">📡</div>
-                <h4>Chưa có điểm</h4>
-                <p>Biểu đồ sẽ hiển thị sau khi có review được duyệt.</p>
-              </div>
-            )}
+          <div className="ts-panel">
+            <div className="ts-panel-title">📡 Phân tích Radar</div>
+            <div style={{ display:'flex', justifyContent:'center' }}>
+              <RadarChart scores={summary?.scoreBreakdown} />
+            </div>
           </div>
-
-          {/* Score breakdown bars */}
-          <div className="ts-panel" style={{ animationDelay:'0.1s' }}>
-            <div className="ts-panel-title"><span>📊</span> Điểm từng tiêu chí</div>
-            {hasSc ? (
-              <div className="ts-score-list">
-                {CRITERIA.map((c, i) => (
-                  <ScoreBar
-                    key={c.key}
-                    criterion={c}
-                    value={breakdown[c.key] || 0}
-                    delay={i * 80}
-                  />
-                ))}
-
-                {/* Divider + overall */}
-                <div style={{
-                  marginTop:'0.5rem',
-                  paddingTop:'1rem',
-                  borderTop:'1px solid rgba(255,255,255,0.05)',
-                  display:'flex',
-                  justifyContent:'space-between',
-                  alignItems:'center',
-                }}>
-                  <span style={{ fontSize:'0.82rem', color:'#6b7280', fontWeight:600 }}>
-                    Điểm trung bình
-                  </span>
-                  <span style={{
-                    fontFamily:"'Playfair Display',serif",
-                    fontSize:'1.6rem',
-                    color: overallInfo?.color || '#e2c97e',
-                  }}>
-                    {summary.averageScore.toFixed(2)}
-                  </span>
+          <div className="ts-panel">
+            <div className="ts-panel-title">📊 Chi tiết tiêu chí</div>
+            {CRITERIA.map(c => (
+              <div key={c.key} className="ts-score-row">
+                <div style={{ display:'flex', justifyContent:'space-between', fontSize:'0.85rem', marginBottom:4 }}>
+                  <span>{c.icon} {c.label}</span>
+                  <span style={{ fontWeight:700 }}>{summary?.scoreBreakdown?.[c.key]?.toFixed(1) || '0.0'}</span>
+                </div>
+                <div className="ts-score-track">
+                  <div className="ts-score-fill" style={{ width: `${(summary?.scoreBreakdown?.[c.key] || 0) * 10}%`, background: getScoreLabel(summary?.scoreBreakdown?.[c.key] || 0).color }} />
                 </div>
               </div>
-            ) : (
-              <div className="ts-no-reviews">
-                <div className="ts-no-reviews-icon">📊</div>
-                <h4>Đang chờ đánh giá</h4>
-                <p>Cần ít nhất 1 review được Admin duyệt để hiển thị điểm.</p>
-              </div>
-            )}
+            ))}
           </div>
         </div>
 
-        {/* ── Rating Form Modal ───────────────────────────────── */}
-        {showRatingForm && (
-          <div style={{
-            position: 'fixed', inset: 0, zIndex: 1000,
-            background: 'rgba(0,0,0,0.8)', overflowY: 'auto',
-            padding: '2rem 1rem', display: 'flex', justifyContent: 'center'
-          }}>
-            <div style={{
-              width: '100%', maxWidth: '800px', background: '#0a0a0f',
-              borderRadius: '20px', padding: '1.5rem', position: 'relative',
-              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', height: 'fit-content'
-            }}>
-              <RatingForm 
-                trackId={track._id}
-                onCancel={() => setShowRatingForm(false)}
-                onSubmit={async (payload) => {
-                  await api.post('/reviews', payload);
-                  fetchStats();
-                  setShowRatingForm(false);
-                }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* ── Reviews section ────────────────────────────────── */}
-        <div className="ts-reviews-section" style={{ animationDelay:'0.15s' }}>
-          <div className="ts-panel-title" style={{ marginBottom:'1.25rem' }}>
-            <span>💬</span> Đánh giá từ reviewer
-            <span style={{
-              fontSize:'0.75rem',
-              color:'#374151',
-              fontWeight:400,
-              textTransform:'none',
-              letterSpacing:0,
-              marginLeft:'0.25rem',
-            }}>
-              ({reviews.length} đã duyệt)
-            </span>
-          </div>
-
-          {reviews.length === 0 ? (
-            <div className="ts-no-reviews">
-              <div className="ts-no-reviews-icon">💬</div>
-              <h4>Chưa có review nào được duyệt</h4>
-              <p>
-                {track?.status === 'pending'
-                  ? 'Bài nhạc đang chờ reviewer. Quá trình này thường mất vài ngày.'
-                  : 'Reviewer đang chấm điểm. Admin sẽ duyệt review sớm nhất có thể.'}
-              </p>
-            </div>
-          ) : (
+        {/* Reviews */}
+        <div className="ts-reviews-section">
+          <div className="ts-panel-title">💬 Đánh giá từ reviewer ({reviews.length})</div>
+          {reviews.length === 0 ? <p style={{ textAlign:'center', color:'#4b5563', padding:20 }}>Chưa có đánh giá nào được duyệt.</p> : (
             <div className="ts-reviews-grid">
-              {reviews.map((r, i) => (
-                <ReviewerCard
-                  key={r._id}
-                  review={r}
-                  style={{ animationDelay:`${i * 0.07}s` }}
-                />
+              {reviews.map(r => (
+                <ReviewerCard key={r._id} review={r} onReport={(rev) => setReportTarget({ type:'review', id:rev._id, name:`Đánh giá của ${rev.reviewer?.name}` })} />
               ))}
             </div>
           )}
         </div>
       </div>
+
+      {showForm && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', zIndex:1000, display:'flex', justifyContent:'center', padding:'2rem' }}>
+          <div style={{ width:'100%', maxWidth:800, background:'#0a0a0f', borderRadius:20, padding:'1.5rem', position:'relative', height:'fit-content' }}>
+            <RatingForm trackId={track._id} onCancel={() => setShowForm(false)} 
+              onSubmit={async (p) => { await api.post('/reviews', p); fetchStats(); setShowForm(false); }} />
+          </div>
+        </div>
+      )}
+
+      {reportTarget && (
+        <ReportModal isOpen onClose={() => setReportTarget(null)} 
+          targetType={reportTarget.type} targetId={reportTarget.id} targetName={reportTarget.name} />
+      )}
     </>
   );
 }

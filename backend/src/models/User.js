@@ -84,6 +84,12 @@ const userSchema = new mongoose.Schema(
     },
 
     // ── Trạng thái tài khoản ────────────────────────────────
+    // ── Playlist & Yêu thích ───────────────────────────────
+    favorites: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref:  'Track',
+    }],
+
     isActive: {
       type:    Boolean,
       default: true,
@@ -166,6 +172,7 @@ userSchema.methods.toPublicJSON = function () {
     followingCount: this.followingCount,
     isActive:       this.isActive,
     createdAt:      this.createdAt,
+    favorites:      this.favorites,
   };
 };
 

@@ -10,6 +10,8 @@ const {
   deleteTrack,
   getTrackStats,
   reportTrack,
+  toggleFavorite,
+  getFavorites,
 } = require('../controllers/track.controller');
 
 
@@ -93,6 +95,12 @@ router.get('/:id/stats', optionalProtect, getTrackStats);
 
 // POST /api/tracks/:id/report — User báo cáo bài vi phạm
 router.post('/:id/report', protect, authorize('user'), reportTrack);
+
+// GET /api/tracks/favorites — Lấy danh sách yêu thích (Cần đặt TRƯỚC các route có :id để tránh bị match nhầm)
+router.get('/favorites', protect, getFavorites);
+
+// POST /api/tracks/:id/favorite — Yêu thích / Bỏ yêu thích
+router.post('/:id/favorite', protect, toggleFavorite);
 
 
 module.exports = router;

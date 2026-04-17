@@ -360,6 +360,75 @@ const reportTrack = async (req, res) => {
 
 
 // ════════════════════════════════════════════════════════════
+//  CONTROLLER 7: YÊU THÍCH / BỎ YÊU THÍCH BÀI NHẠC
+// ════════════════════════════════════════════════════════════
+/**
+ * @route   POST /api/tracks/:id/favorite
+ * @access  Private
+ */
+const toggleFavorite = async (req, res) => {
+  try {
+    const trackId = req.params.id;
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
+    }
+
+    const isFavorite = user.favorites.includes(trackId);
+
+    if (isFavorite) {
+      // Remove
+      user.favorites = user.favorites.filter((id) => id.toString() !== trackId);
+    } else {
+      // Add
+      user.favorites.push(trackId);
+    }
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      isFavorite: !isFavorite,
+      message: isFavorite ? 'Đã xóa khỏi danh sách yêu thích' : 'Đã thêm vào danh sách yêu thích',
+    });
+  } catch (error) {
+    console.error('[toggleFavorite]', error);
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
+  }
+};
+
+
+// ════════════════════════════════════════════════════════════
+//  CONTROLLER 8: LẤY DANH SÁCH YÊU THÍCH
+// ════════════════════════════════════════════════════════════
+/**
+ * @route   GET /api/tracks/favorites
+ * @access  Private
+ */
+const getFavorites = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).populate({
+      path: 'favorites',
+      populate: { path: 'artist', select: 'name avatarUrl' },
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
+    }
+
+    res.status(200).json({
+      success: true,
+      tracks: user.favorites,
+    });
+  } catch (error) {
+    console.error('[getFavorites]', error);
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
+  }
+};
+
+
+// ════════════════════════════════════════════════════════════
 //  EXPORT
 // ════════════════════════════════════════════════════════════
-module.exports = { uploadTrack, getTracks, getTrackById, deleteTrack, getTrackStats, reportTrack };
+module.exports = { uploadTrack, getTracks, getTrackById, deleteTrack, getTrackStats, reportTrack, toggleFavorite, getFavorites };

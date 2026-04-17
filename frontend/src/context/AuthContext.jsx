@@ -338,6 +338,46 @@ export const AuthProvider = ({ children }) => {
 
 
   // ─────────────────────────────────────────────────────────
+  //  ACTION: TOGGLE FAVORITE
+  // ─────────────────────────────────────────────────────────
+
+  /**
+   * toggleFavorite(trackId)
+   *
+   * Gửi POST /api/tracks/:id/favorite để thêm/xoá khỏi danh sách yêu thích.
+   * Cập nhật local state để UI phản hồi ngay lập tức.
+   */
+  const toggleFavorite = useCallback(async (trackId) => {
+    if (!user) return;
+
+    try {
+      const { data } = await api.post(`/tracks/${trackId}/favorite`);
+      
+      setUser(prev => {
+        if (!prev) return null;
+        let newFavs = [...(prev.favorites || [])];
+        if (data.isFavorite) {
+          // Add if not already there
+          if (!newFavs.includes(trackId)) newFavs.push(trackId);
+        } else {
+          // Remove
+          newFavs = newFavs.filter(id => id.toString() !== trackId);
+        }
+        
+        const updated = { ...prev, favorites: newFavs };
+        persistUser(updated);
+        return updated;
+      });
+
+      return data.isFavorite;
+    } catch (error) {
+      console.error('[toggleFavorite] failed', error);
+      throw error;
+    }
+  }, [user]);
+
+
+  // ─────────────────────────────────────────────────────────
   //  HELPER: XOÁ LỖI AUTH
   // ─────────────────────────────────────────────────────────
 
@@ -384,6 +424,11 @@ export const AuthProvider = ({ children }) => {
    */
   const isAuthenticated = !loading && user !== null;
 
+  /**
+   * favorites — Mảng ID các bài nhạc đã yêu thích (shorthand).
+   */
+  const favorites = useMemo(() => user?.favorites || [], [user?.favorites]);
+
 
   // ─────────────────────────────────────────────────────────
   //  CONTEXT VALUE — dùng useMemo để tránh re-render không cần thiết
@@ -409,10 +454,12 @@ export const AuthProvider = ({ children }) => {
       register,           // (name, email, password, role) → Promise<user>
       logout,             // () → void
       updateUser,         // (updatedFields) → void
+      toggleFavorite,     // (trackId) → Promise<boolean>
       clearAuthError,     // () → void
 
       // ── Helpers ────────────────────────────────────────
       isRole,             // (...roles) → boolean
+      favorites,          // string[]
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [user, loading, authError]
