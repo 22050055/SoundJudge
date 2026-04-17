@@ -2,6 +2,7 @@ const Review = require('../models/Review');
 const Track  = require('../models/Track');
 const Report = require('../models/Report');
 const User   = require('../models/User');
+const Notification = require('../models/Notification');
 
 // ════════════════════════════════════════════════════════════
 //  CONTROLLER 1: GỬI ĐÁNH GIÁ
@@ -64,6 +65,21 @@ const submitReview = async (req, res) => {
 
     // Tăng totalReviews của user
     await User.findByIdAndUpdate(req.user._id, { $inc: { totalReviews: 1 } });
+
+    // Thông báo cho nghệ sĩ ( artist) của bài nhạc
+    try {
+      await Notification.create({
+        recipient:   track.artist,
+        sender:      req.user._id,
+        type:        'new_review',
+        targetId:    review._id,
+        targetModel: 'Review',
+        message:     `${req.user.name} đã đánh giá bài nhạc của bạn: ${track.title}`,
+        link:        `/dashboard/track/${track._id}`
+      });
+    } catch (notifErr) {
+      console.error('Review notification error:', notifErr);
+    }
 
     await review.populate('reviewer', 'name avatarUrl');
 

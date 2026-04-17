@@ -6,6 +6,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../api/axiosConfig';
+import NotificationPanel from './NotificationPanel';
 
 // ─── Helpers ────────────────────────────────────────────────
 
@@ -35,6 +37,8 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const menuRef = useRef(null);
 
   const role       = user?.role || 'user';
@@ -51,6 +55,20 @@ export default function Navbar() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  // Lấy số lượng thông báo chưa đọc (polling mỗi 60s)
+  useEffect(() => {
+    if (!user) return;
+    const fetchUnread = async () => {
+      try {
+        const { data } = await api.get('/notifications');
+        setUnreadCount(data.unreadCount || 0);
+      } catch (err) { /* ignore */ }
+    };
+    fetchUnread();
+    const timer = setInterval(fetchUnread, 60000);
+    return () => clearInterval(timer);
+  }, [user]);
 
   const handleLogout = () => {
     logout();
@@ -301,6 +319,47 @@ export default function Navbar() {
           .sj-avatar-name { display: none; }
           .sj-rep { display: none; }
         }
+
+        /* Notifications Button */
+        .notif-btn-trigger {
+          position: relative;
+          background: none;
+          border: none;
+          cursor: pointer;
+          color: #6b7280;
+          font-size: 1.25rem;
+          padding: 0.4rem;
+          border-radius: 50%;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .notif-btn-trigger:hover {
+          color: #e2c97e;
+          background: rgba(226,201,126,0.08);
+        }
+        .notif-btn-trigger.active {
+          color: #e2c97e;
+          background: rgba(226,201,126,0.12);
+        }
+        .notif-badge {
+          position: absolute;
+          top: 0;
+          right: 0;
+          background: #ef4444;
+          color: white;
+          font-size: 0.65rem;
+          font-weight: 800;
+          min-width: 16px;
+          height: 16px;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 2px solid #0a0a0f;
+          padding: 0 2px;
+        }
       `}</style>
 
       <nav className="sj-nav">
@@ -327,13 +386,31 @@ export default function Navbar() {
         {/* Right section */}
         <div className="sj-nav-right">
 
-          {/* Role badge */}
           <span
             className="sj-role-badge"
             style={{ color: roleConf.color, background: roleConf.bg }}
           >
             {roleConf.label}
           </span>
+
+          {/* Notifications Bell */}
+          <div style={{ position: 'relative' }}>
+            <button 
+              className={`notif-btn-trigger ${notifOpen ? 'active' : ''}`}
+              onClick={() => setNotifOpen(!notifOpen)}
+              title="Thông báo"
+            >
+              🔔
+              {unreadCount > 0 && (
+                <span className="notif-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
+              )}
+            </button>
+            <NotificationPanel 
+              isOpen={notifOpen} 
+              onClose={() => setNotifOpen(false)} 
+              setUnreadCount={setUnreadCount}
+            />
+          </div>
 
           {/* Avatar + dropdown */}
           <div className="sj-avatar-wrap" ref={menuRef}>

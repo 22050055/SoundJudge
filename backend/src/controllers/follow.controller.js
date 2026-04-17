@@ -1,5 +1,6 @@
 const User   = require('../models/User');
 const Report = require('../models/Report');
+const Notification = require('../models/Notification');
 
 // ════════════════════════════════════════════════════════════
 //  CONTROLLER 1: FOLLOW USER
@@ -30,6 +31,17 @@ const followUser = async (req, res) => {
     // Thêm vào following / followers
     await User.findByIdAndUpdate(currentId, { $push: { following: targetId } });
     await User.findByIdAndUpdate(targetId,  { $push: { followers: currentId } });
+
+    // Tạo thông báo
+    await Notification.create({
+      recipient:   targetId,
+      sender:      currentId,
+      type:        'follow',
+      targetId:    currentId,
+      targetModel: 'User',
+      message:     `${req.user.name} đã theo dõi bạn`,
+      link:        `/profile/${currentId}`
+    }).catch(err => console.error('Notification error:', err));
 
     res.status(200).json({ success: true, message: `Đã follow ${target.name}` });
 

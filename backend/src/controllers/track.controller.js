@@ -2,6 +2,7 @@ const Track  = require('../models/Track');
 const Review = require('../models/Review');
 const Report = require('../models/Report');
 const User   = require('../models/User');
+const Notification = require('../models/Notification');
 const { cloudinary } = require('../config/cloudinary');
 
 // ════════════════════════════════════════════════════════════
@@ -60,6 +61,25 @@ const uploadTrack = async (req, res) => {
 
     // Tăng totalTracks của user
     await User.findByIdAndUpdate(req.user._id, { $inc: { totalTracks: 1 } });
+
+    // Thông báo cho những người đang theo dõi (followers)
+    try {
+      const user = await User.findById(req.user._id).select('followers name');
+      if (user && user.followers.length > 0) {
+        const notifications = user.followers.map(followerId => ({
+          recipient:   followerId,
+          sender:      req.user._id,
+          type:        'new_track',
+          targetId:    track._id,
+          targetModel: 'Track',
+          message:     `${user.name} vừa đăng bài nhạc mới: ${track.title}`,
+          link:        `/dashboard/track/${track._id}`
+        }));
+        await Notification.insertMany(notifications);
+      }
+    } catch (notifErr) {
+      console.error('Track upload notification error:', notifErr);
+    }
 
     res.status(201).json({
       success: true,
