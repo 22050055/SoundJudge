@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+music-platform.env
+*.env
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+coverage/
+
+# Misc
+.DS_Store
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor directories and files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sqm
+*.local
+
+# System/IDE
+thumbs.db
