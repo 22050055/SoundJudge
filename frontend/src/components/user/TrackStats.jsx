@@ -9,6 +9,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api, { extractErrorMessage } from '../../api/axiosConfig';
 import RatingForm from '../common/RatingForm';
+import MusicPlayer from '../common/MusicPlayer';
 
 // ─── Constants ────────────────────────────────────────────────
 
@@ -802,6 +803,18 @@ export default function TrackStats() {
             </div>
           )}
         </div>
+
+        {/* ── Music Player ───────────────────────────────────── */}
+        {track?.audioUrl && (
+          <div style={{ marginBottom: '2rem' }}>
+            <MusicPlayer 
+              audioUrl={track.audioUrl} 
+              title={track.title} 
+              artist={track.artist?.name} 
+              coverUrl={track.coverUrl} 
+            />
+          </div>
+        )}
 
         {/* ── Two-column grid ────────────────────────────────── */}
         <div className="ts-grid">
