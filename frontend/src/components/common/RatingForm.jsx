@@ -499,7 +499,7 @@ export default function RatingForm({ trackId, onSubmit, onCancel, disabled = fal
 
   // Computed
   const allScored = CRITERIA.every(c => scores[c.key] > 0);
-  const commentOk = comment.trim().length >= 20;
+  const commentOk = comment.trim().length >= 10;
   const overall   = allScored
     ? CRITERIA.reduce((s, c) => s + scores[c.key], 0) / 5
     : 0;
@@ -515,7 +515,7 @@ export default function RatingForm({ trackId, onSubmit, onCancel, disabled = fal
     setError('');
 
     if (!allScored) { setError('Vui lòng chấm điểm đầy đủ 5 tiêu chí.'); return; }
-    if (!commentOk) { setError('Nhận xét cần có ít nhất 20 ký tự.'); return; }
+    if (!commentOk) { setError('Nhận xét cần có ít nhất 10 ký tự.'); return; }
     if (!trackId)   { setError('Thiếu trackId — kiểm tra lại props.'); return; }
 
     setSubmitting(true);
@@ -623,7 +623,7 @@ export default function RatingForm({ trackId, onSubmit, onCancel, disabled = fal
           <textarea
             id={`${uid}-comment`}
             className={`rf-textarea ${error && !commentOk ? 'invalid' : ''}`}
-            placeholder="Chia sẻ nhận xét chi tiết — điểm mạnh, điểm cần cải thiện, cảm nhận tổng thể về bài nhạc… (tối thiểu 20 ký tự)"
+            placeholder="Chia sẻ nhận xét chi tiết — điểm mạnh, điểm cần cải thiện, cảm nhận tổng thể về bài nhạc… (tối thiểu 10 ký tự)"
             value={comment}
             maxLength={2000}
             onChange={e => { setComment(e.target.value); setError(''); }}
@@ -636,7 +636,7 @@ export default function RatingForm({ trackId, onSubmit, onCancel, disabled = fal
           <div id={`${uid}-hints`} className="rf-hints" style={{ marginTop: '0.75rem' }}>
             {[
               { ok: allScored, text: 'Đã chấm đủ 5 tiêu chí' },
-              { ok: commentOk, text: `Nhận xét ≥ 20 ký tự (hiện tại: ${comment.trim().length})` },
+              { ok: commentOk, text: `Nhận xét ≥ 10 ký tự (hiện tại: ${comment.trim().length})` },
             ].map(({ ok, text }) => (
               <div key={text} className="rf-hint">
                 <div className={`rf-hint-dot ${ok ? 'ok' : 'pending'}`} aria-hidden />

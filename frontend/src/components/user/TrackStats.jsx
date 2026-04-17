@@ -740,6 +740,11 @@ export default function TrackStats() {
 
           <div className="ts-hero-info">
             <div className="ts-hero-title">{track?.title}</div>
+            <div style={{ color: '#9ca3af', marginBottom: '0.4rem', fontSize: '0.85rem' }}>
+              bởi <Link to={`/dashboard/profile/${track?.artist?._id}`} style={{ color: '#e2c97e', textDecoration: 'none' }}>
+                {track?.artist?.name}
+              </Link>
+            </div>
             <div className="ts-hero-meta">
               <span className="ts-genre-badge">
                 {track?.genre}

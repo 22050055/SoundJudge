@@ -47,7 +47,7 @@ router.post(
     body('trackId').notEmpty().withMessage('trackId không được để trống').isMongoId().withMessage('trackId không đúng định dạng'),
     scoresRules(),
     body('comment').notEmpty().withMessage('Nhận xét không được để trống').trim()
-      .isLength({ min: 20 }).withMessage('Nhận xét phải có ít nhất 20 ký tự')
+      .isLength({ min: 10 }).withMessage('Nhận xét phải có ít nhất 10 ký tự')
       .isLength({ max: 2000 }).withMessage('Nhận xét không được vượt quá 2000 ký tự'),
     body('timeMarkers').optional().isArray().withMessage('timeMarkers phải là mảng'),
   ],
