@@ -266,7 +266,7 @@ export const AuthProvider = ({ children }) => {
    * @returns {object} user
    * @throws  {Error}  Ném lại axios error nếu đăng ký thất bại
    */
-  const register = useCallback(async (name, email, password, role) => {
+  const register = useCallback(async (name, email, password) => {
     setAuthError(null);
 
     try {
@@ -274,7 +274,7 @@ export const AuthProvider = ({ children }) => {
         name:     name.trim(),
         email:    email.trim().toLowerCase(),
         password,
-        role,
+        // role không cần gửi — backend luôn set 'user'
       });
 
       setAuthToken(data.token);

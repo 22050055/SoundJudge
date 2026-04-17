@@ -19,9 +19,8 @@ import { useAuth } from '../../context/AuthContext';
 
 // Map role → trang dashboard tương ứng
 const ROLE_HOME = {
-  artist:   '/dashboard/artist',
-  reviewer: '/dashboard/reviewer',
-  admin:    '/dashboard/admin',
+  user:  '/dashboard/home',
+  admin: '/dashboard/admin',
 };
 
 export default function ProtectedRoute({ children, roles = [], redirect = '/login' }) {

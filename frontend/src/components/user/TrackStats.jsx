@@ -6,7 +6,9 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import api, { extractErrorMessage } from '../../api/axiosConfig';
+import RatingForm from '../common/RatingForm';
 
 // ─── Constants ────────────────────────────────────────────────
 
@@ -655,9 +657,11 @@ function ReviewerCard({ review, style }) {
 
 export default function TrackStats() {
   const { id } = useParams();
+  const { user } = useAuth();
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
+  const [showRatingForm, setShowRatingForm] = useState(false);
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
@@ -680,7 +684,7 @@ export default function TrackStats() {
       <>
         <style>{CSS}</style>
         <div className="ts-root">
-          <Link to="/dashboard/artist" className="ts-back">← Quay lại</Link>
+          <Link to="/dashboard/home" className="ts-back">← Quay lại</Link>
           <div className="ts-skel-block" style={{ height:160, marginBottom:'2rem' }} />
           <div className="ts-grid" style={{ marginBottom:'2rem' }}>
             <div className="ts-skel-block" style={{ height:320 }} />
@@ -698,7 +702,7 @@ export default function TrackStats() {
       <>
         <style>{CSS}</style>
         <div className="ts-root">
-          <Link to="/dashboard/artist" className="ts-back">← Quay lại</Link>
+          <Link to="/dashboard/home" className="ts-back">← Quay lại</Link>
           <div className="ts-error">
             <div className="ts-error-icon">⚠</div>
             <h3>Không thể tải dữ liệu</h3>
@@ -723,7 +727,7 @@ export default function TrackStats() {
     <>
       <style>{CSS}</style>
       <div className="ts-root">
-        <Link to="/dashboard/artist" className="ts-back">← Quay lại kho nhạc</Link>
+        <Link to="/dashboard/home" className="ts-back">← Quay lại</Link>
 
         {/* ── Hero ──────────────────────────────────────────── */}
         <div className="ts-hero">
@@ -745,7 +749,6 @@ export default function TrackStats() {
               </span>
             </div>
 
-            {/* Progress toward completion */}
             <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', marginTop:'0.25rem' }}>
               <div style={{
                 flex:1, height:4,
@@ -762,8 +765,24 @@ export default function TrackStats() {
                 }} />
               </div>
               <span style={{ fontSize:'0.72rem', color:'#4b5563', whiteSpace:'nowrap' }}>
-                {summary?.reviewCount || 0}/3 reviews
+                {summary?.reviewCount || 0} reviews
               </span>
+            </div>
+            
+            {/* Action buttons */}
+            <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
+              {user && user.id !== track?.artist?._id && !reviews.some(r => r.reviewer?._id === user.id) && (
+                <button
+                  onClick={() => setShowRatingForm(true)}
+                  style={{
+                    padding: '0.5rem 1rem', background: '#e2c97e', color: '#0a0a0f',
+                    border: 'none', borderRadius: '8px', cursor: 'pointer',
+                    fontWeight: 'bold', fontSize: '0.85rem'
+                  }}
+                >
+                  ✍️ Viết đánh giá
+                </button>
+              )}
             </div>
           </div>
 
@@ -846,6 +865,31 @@ export default function TrackStats() {
             )}
           </div>
         </div>
+
+        {/* ── Rating Form Modal ───────────────────────────────── */}
+        {showRatingForm && (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,0.8)', overflowY: 'auto',
+            padding: '2rem 1rem', display: 'flex', justifyContent: 'center'
+          }}>
+            <div style={{
+              width: '100%', maxWidth: '800px', background: '#0a0a0f',
+              borderRadius: '20px', padding: '1.5rem', position: 'relative',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', height: 'fit-content'
+            }}>
+              <RatingForm 
+                trackId={track._id}
+                onCancel={() => setShowRatingForm(false)}
+                onSubmit={async (payload) => {
+                  await api.post('/reviews', payload);
+                  fetchStats();
+                  setShowRatingForm(false);
+                }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* ── Reviews section ────────────────────────────────── */}
         <div className="ts-reviews-section" style={{ animationDelay:'0.15s' }}>

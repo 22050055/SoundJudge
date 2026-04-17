@@ -10,16 +10,18 @@ import { useAuth } from '../../context/AuthContext';
 // ─── Helpers ────────────────────────────────────────────────
 
 const ROLE_CONFIG = {
-  artist:   { label: 'Artist',   color: '#a78bfa', bg: 'rgba(167,139,250,0.12)' },
-  reviewer: { label: 'Reviewer', color: '#34d399', bg: 'rgba(52,211,153,0.12)'  },
-  admin:    { label: 'Admin',    color: '#e2c97e', bg: 'rgba(226,201,126,0.12)' },
+  user:  { label: 'User',  color: '#a78bfa', bg: 'rgba(167,139,250,0.12)' },
+  admin: { label: 'Admin', color: '#e2c97e', bg: 'rgba(226,201,126,0.12)' },
 };
 
 const NAV_LINKS = {
-  artist:   [{ to: '/dashboard/artist',   label: 'Kho nhạc' },
-             { to: '/dashboard/upload',   label: 'Upload' }],
-  reviewer: [{ to: '/dashboard/reviewer', label: 'Workspace' }],
-  admin:    [{ to: '/dashboard/admin',    label: 'Dashboard' }],
+  user:  [
+    { to: '/dashboard/home',   label: '🌐 Khám phá' },
+    { to: '/dashboard/upload', label: '📤 Upload' },
+  ],
+  admin: [
+    { to: '/dashboard/admin',  label: '⚙️ Dashboard' },
+  ],
 };
 
 // Lấy chữ cái đầu để làm avatar placeholder
@@ -35,8 +37,8 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
-  const role       = user?.role || 'artist';
-  const roleConf   = ROLE_CONFIG[role];
+  const role       = user?.role || 'user';
+  const roleConf   = ROLE_CONFIG[role] || ROLE_CONFIG.user;
   const navLinks   = NAV_LINKS[role] || [];
 
   // Đóng dropdown khi click bên ngoài
@@ -324,13 +326,6 @@ export default function Navbar() {
 
         {/* Right section */}
         <div className="sj-nav-right">
-          {/* Reputation score cho reviewer */}
-          {role === 'reviewer' && user?.reputationScore !== undefined && (
-            <div className="sj-rep">
-              <div className="sj-rep-dot" />
-              <span>{user.reputationScore} pts</span>
-            </div>
-          )}
 
           {/* Role badge */}
           <span
@@ -370,9 +365,20 @@ export default function Navbar() {
                     className="sj-dropdown-item"
                     onClick={() => setMenuOpen(false)}
                   >
-                    <span>→</span> {label}
+                    {label}
                   </Link>
                 ))}
+
+                {/* Link trang cá nhân */}
+                {user?.id && (
+                  <Link
+                    to={`/dashboard/profile/${user.id}`}
+                    className="sj-dropdown-item"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    👤 Trang cá nhân
+                  </Link>
+                )}
 
                 <div className="sj-dropdown-divider" />
 

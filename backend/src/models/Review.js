@@ -1,28 +1,19 @@
 const mongoose = require('mongoose');
 
 // ════════════════════════════════════════════════════════════
-//  SUB-SCHEMA: Ghi chu theo moc thoi gian trong bai nhac
+//  SUB-SCHEMA: Ghi chú theo mốc thời gian
 // ════════════════════════════════════════════════════════════
-
-/**
- * timeMarkerSchema — Reviewer co the ghi chu tai mot thoi diem cu the
- * Vi du: { atSecond: 42, note: "Giai dieu bat dau rat an tuong o day" }
- *
- * CANH BAO: KHONG dat ten la "timestamps" vi Mongoose da dung ten do
- * cho option { timestamps: true } — se gay xung dot va loi runtime.
- * Ten dung phai dung la: timeMarkers
- */
 const timeMarkerSchema = new mongoose.Schema(
   {
     atSecond: {
       type:     Number,
-      min:      [0, 'Thoi diem khong the am'],
+      min:      [0, 'Thời điểm không thể âm'],
       required: true,
     },
     note: {
       type:      String,
       trim:      true,
-      maxlength: [200, 'Ghi chu khong duoc vuot qua 200 ky tu'],
+      maxlength: [200, 'Ghi chú không được vượt quá 200 ký tự'],
       required:  true,
     },
   },
@@ -31,68 +22,59 @@ const timeMarkerSchema = new mongoose.Schema(
 
 
 // ════════════════════════════════════════════════════════════
-//  SCHEMA CHINH
+//  SCHEMA CHÍNH
 // ════════════════════════════════════════════════════════════
 const reviewSchema = new mongoose.Schema(
   {
-    // Bai nhac duoc danh gia
+    // Bài nhạc được đánh giá
     track: {
       type:     mongoose.Schema.Types.ObjectId,
       ref:      'Track',
-      required: [true, 'Bai nhac duoc danh gia la bat buoc'],
+      required: [true, 'Bài nhạc được đánh giá là bắt buộc'],
     },
 
-    // Reviewer thuc hien danh gia
+    // Người thực hiện đánh giá
     reviewer: {
       type:     mongoose.Schema.Types.ObjectId,
       ref:      'User',
-      required: [true, 'Thong tin reviewer la bat buoc'],
+      required: [true, 'Thông tin reviewer là bắt buộc'],
     },
 
-    // ── 5 Tieu chi dinh luong (thang diem 1 – 10) ──────────
+    // ── 5 Tiêu chí định lượng (thang điểm 1 – 10) ──────────
     scores: {
-      /** Giai dieu: su thu hut, de nho cua melody chinh */
       melody: {
         type:     Number,
-        required: [true, 'Diem Giai dieu la bat buoc'],
-        min:      [1, 'Diem toi thieu la 1'],
-        max:      [10, 'Diem toi da la 10'],
+        required: [true, 'Điểm Giai điệu là bắt buộc'],
+        min:      [1, 'Điểm tối thiểu là 1'],
+        max:      [10, 'Điểm tối đa là 10'],
       },
-      /** Loi nhac: chat luong ca tu, y nghia, cach dung ngon ngu */
       lyrics: {
         type:     Number,
-        required: [true, 'Diem Loi la bat buoc'],
-        min:      [1, 'Diem toi thieu la 1'],
-        max:      [10, 'Diem toi da la 10'],
+        required: [true, 'Điểm Lời là bắt buộc'],
+        min:      [1, 'Điểm tối thiểu là 1'],
+        max:      [10, 'Điểm tối đa là 10'],
       },
-      /** Hoa am: do phong phu, su hai hoa cua cac hop am */
       harmony: {
         type:     Number,
-        required: [true, 'Diem Hoa am la bat buoc'],
-        min:      [1, 'Diem toi thieu la 1'],
-        max:      [10, 'Diem toi da la 10'],
+        required: [true, 'Điểm Hòa âm là bắt buộc'],
+        min:      [1, 'Điểm tối thiểu là 1'],
+        max:      [10, 'Điểm tối đa là 10'],
       },
-      /** Nhip dieu: tinh nhat quan, groove va cam giac nhip */
       rhythm: {
         type:     Number,
-        required: [true, 'Diem Nhip dieu la bat buoc'],
-        min:      [1, 'Diem toi thieu la 1'],
-        max:      [10, 'Diem toi da la 10'],
+        required: [true, 'Điểm Nhịp điệu là bắt buộc'],
+        min:      [1, 'Điểm tối thiểu là 1'],
+        max:      [10, 'Điểm tối đa là 10'],
       },
-      /** San xuat: chat luong am thanh tong the (mix, master, arrangement) */
       production: {
         type:     Number,
-        required: [true, 'Diem San xuat la bat buoc'],
-        min:      [1, 'Diem toi thieu la 1'],
-        max:      [10, 'Diem toi da la 10'],
+        required: [true, 'Điểm Sản xuất là bắt buộc'],
+        min:      [1, 'Điểm tối thiểu là 1'],
+        max:      [10, 'Điểm tối đa là 10'],
       },
     },
 
-    /**
-     * overallScore — Diem trung binh cua 5 tieu chi
-     * KHONG do nguoi dung nhap, duoc tu dong tinh trong pre('save') hook
-     * Luu kieu Number, lam tron 1 chu so thap phan
-     */
+    // Điểm trung bình tự động tính từ pre('save')
     overallScore: {
       type:    Number,
       default: 0,
@@ -100,46 +82,42 @@ const reviewSchema = new mongoose.Schema(
       max:     10,
     },
 
-    // Nhan xet van ban
+    // Nhận xét văn bản
     comment: {
       type:      String,
-      required:  [true, 'Nhan xet khong duoc de trong'],
-      minlength: [20,   'Nhan xet phai co it nhat 20 ky tu'],
-      maxlength: [2000, 'Nhan xet khong duoc vuot qua 2000 ky tu'],
+      required:  [true, 'Nhận xét không được để trống'],
+      minlength: [20,   'Nhận xét phải có ít nhất 20 ký tự'],
+      maxlength: [2000, 'Nhận xét không được vượt quá 2000 ký tự'],
       trim:      true,
     },
 
-    /**
-     * timeMarkers — Ghi chu tai moc thoi gian trong bai nhac
-     * Reviewer co the danh dau cac diem dang chu y khi nghe
-     * Vi du: [{ atSecond: 30, note: "Dieu khuc rat catchy" }]
-     */
     timeMarkers: {
       type:    [timeMarkerSchema],
       default: [],
     },
 
-    /**
-     * status — Admin kiem duyet truoc khi hien cho Artist
-     *   pending  -> Moi gui, cho Admin xem
-     *   approved -> Da duyet, tinh vao diem tong hop cua Track
-     *   rejected -> Bi tu choi (vi pham tieu chuan, spam...)
-     */
+    // ── Trạng thái ──────────────────────────────────────────
+    // Review tự động được approved ngay khi gửi (không cần Admin duyệt)
     status: {
       type:    String,
       enum:    {
-        values:  ['pending', 'approved', 'rejected'],
-        message: 'Status phai la: pending, approved hoac rejected',
+        values:  ['approved', 'removed'],
+        message: 'Status phải là: approved hoặc removed',
       },
-      default: 'pending',
+      default: 'approved',
     },
 
-    // Ly do tu choi — Admin dien khi status = rejected
-    rejectionReason: {
-      type:    String,
-      default: '',
-      trim:    true,
+    // ── Báo cáo vi phạm ─────────────────────────────────────
+    reportCount: {
+      type:    Number,
+      default: 0,
+      min:     0,
     },
+    reports: [{
+      reportedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      reason:     { type: String },
+      createdAt:  { type: Date, default: Date.now },
+    }],
   },
   {
     timestamps: true,
@@ -153,33 +131,29 @@ const reviewSchema = new mongoose.Schema(
 //  INDEX
 // ════════════════════════════════════════════════════════════
 
-/**
- * Rang buoc UNIQUE: moi reviewer chi duoc review mot track DUY NHAT mot lan
- * Neu vi pham -> MongoDB tra loi code 11000 (duplicate key)
- */
+// Mỗi user chỉ được review một track duy nhất một lần
 reviewSchema.index({ track: 1, reviewer: 1 }, { unique: true });
 
-// Tim nhanh review theo track + status
+// Tìm nhanh review theo track + status
 reviewSchema.index({ track: 1, status: 1 });
 
-// Tim nhanh tat ca review cua mot reviewer
+// Tìm nhanh tất cả review của một user
 reviewSchema.index({ reviewer: 1, createdAt: -1 });
+
+// Admin xem review bị báo cáo nhiều nhất
+reviewSchema.index({ reportCount: -1 });
 
 
 // ════════════════════════════════════════════════════════════
 //  VIRTUAL FIELDS
 // ════════════════════════════════════════════════════════════
-
-/**
- * scoreLabel — Nhan xep loai dua tren overallScore
- */
 reviewSchema.virtual('scoreLabel').get(function () {
   const s = this.overallScore;
-  if (s >= 9)   return 'Xuat sac';
-  if (s >= 7.5) return 'Tot';
-  if (s >= 6)   return 'Kha';
-  if (s >= 4)   return 'Trung binh';
-  return 'Can cai thien';
+  if (s >= 9)   return 'Xuất sắc';
+  if (s >= 7.5) return 'Tốt';
+  if (s >= 6)   return 'Khá';
+  if (s >= 4)   return 'Trung bình';
+  return 'Cần cải thiện';
 });
 
 
@@ -187,10 +161,7 @@ reviewSchema.virtual('scoreLabel').get(function () {
 //  MIDDLEWARE (HOOKS)
 // ════════════════════════════════════════════════════════════
 
-/**
- * Pre-save: Tu dong tinh overallScore tu 5 tieu chi
- * Cong thuc: overallScore = (melody + lyrics + harmony + rhythm + production) / 5
- */
+// Tự động tính overallScore từ 5 tiêu chí
 reviewSchema.pre('save', function (next) {
   if (this.isModified('scores')) {
     const { melody, lyrics, harmony, rhythm, production } = this.scores;
@@ -207,11 +178,7 @@ reviewSchema.pre('save', function (next) {
 
 /**
  * Review.calcTrackScore(trackId)
- * Tinh lai diem tong hop cho mot Track dua tren tat ca review APPROVED
- * Goi trong review.controller.js sau khi approve hoac reject
- *
- * @param   {string} trackId  - _id cua Track can tinh lai diem
- * @returns {object} { reviewCount, scoreBreakdown, averageScore }
+ * Tính lại điểm tổng hợp cho một Track dựa trên tất cả review APPROVED
  */
 reviewSchema.statics.calcTrackScore = async function (trackId) {
   const result = await this.aggregate([

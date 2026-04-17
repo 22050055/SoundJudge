@@ -1,27 +1,23 @@
 const Review = require('../models/Review');
 const Track  = require('../models/Track');
+const Report = require('../models/Report');
 const User   = require('../models/User');
 
 // ════════════════════════════════════════════════════════════
-//  CONTROLLER 1: REVIEWER GỬI ĐÁNH GIÁ
+//  CONTROLLER 1: GỬI ĐÁNH GIÁ
 // ════════════════════════════════════════════════════════════
-
 /**
- * @desc    Reviewer gửi đánh giá cho một bài nhạc
+ * @desc    User gửi đánh giá cho bài nhạc
  * @route   POST /api/reviews
- * @access  Private — chỉ Reviewer
+ * @access  Private — user, admin
  *
- * Body:
- *   trackId     {string}  - ID của bài nhạc cần đánh giá
- *   scores      {object}  - { melody, lyrics, harmony, rhythm, production } (1–10)
- *   comment     {string}  - Nhận xét văn bản (tối thiểu 20 ký tự)
- *   timeMarkers {array}   - Tuỳ chọn: [{ atSecond: number, note: string }]
+ * Review tự động được approved ngay khi gửi.
+ * User không được review bài của chính mình.
  */
 const submitReview = async (req, res) => {
   try {
     const { trackId, scores, comment, timeMarkers } = req.body;
 
-    // ── 1. Kiểm tra dữ liệu bắt buộc ─────────────────────
     if (!trackId || !scores || !comment) {
       return res.status(400).json({
         success: false,
@@ -29,63 +25,57 @@ const submitReview = async (req, res) => {
       });
     }
 
-    // ── 2. Kiểm tra bài nhạc tồn tại và đang chờ review ──
     const track = await Track.findById(trackId);
-    if (!track) {
+    if (!track || track.status !== 'published') {
       return res.status(404).json({ success: false, message: 'Không tìm thấy bài nhạc' });
     }
 
-    if (track.status === 'completed') {
+    // Không cho tự review bài của mình
+    if (track.artist.toString() === req.user._id.toString()) {
       return res.status(400).json({
         success: false,
-        message: 'Bài nhạc này đã hoàn tất đánh giá, không thể gửi thêm review',
+        message: 'Bạn không thể đánh giá bài nhạc của chính mình',
       });
     }
 
-    // ── 3. Kiểm tra reviewer đã review bài này chưa ───────
-    // (Unique index { track, reviewer } trong schema cũng sẽ bắt lỗi 11000)
-    const existingReview = await Review.findOne({
-      track:    trackId,
-      reviewer: req.user._id,
-    });
+    // Kiểm tra đã review chưa
+    const existingReview = await Review.findOne({ track: trackId, reviewer: req.user._id });
     if (existingReview) {
-      return res.status(400).json({
-        success: false,
-        message: 'Bạn đã gửi đánh giá cho bài nhạc này rồi',
-      });
+      return res.status(400).json({ success: false, message: 'Bạn đã gửi đánh giá cho bài nhạc này rồi' });
     }
 
-    // ── 4. Tạo review ─────────────────────────────────────
-    // overallScore sẽ được tự động tính bởi pre('save') hook trong Review model
+    // Tạo review — status mặc định 'approved' (tự động)
     const review = await Review.create({
       track:       trackId,
       reviewer:    req.user._id,
       scores,
       comment:     comment.trim(),
       timeMarkers: timeMarkers || [],
-      // status mặc định là 'pending', chờ Admin duyệt
+      status:      'approved',
     });
 
-    // ── 5. Cập nhật trạng thái track sang 'reviewing' ─────
-    // Khi có review đầu tiên, track chuyển từ 'pending' → 'reviewing'
-    if (track.status === 'pending') {
-      track.status = 'reviewing';
-      await track.save();
-    }
+    // Tính lại điểm track ngay lập tức
+    const scoreData = await Review.calcTrackScore(trackId);
+    await Track.findByIdAndUpdate(trackId, {
+      reviewCount:    scoreData.reviewCount,
+      scoreBreakdown: scoreData.scoreBreakdown,
+      averageScore:   scoreData.averageScore,
+    });
+
+    // Tăng totalReviews của user
+    await User.findByIdAndUpdate(req.user._id, { $inc: { totalReviews: 1 } });
+
+    await review.populate('reviewer', 'name avatarUrl');
 
     res.status(201).json({
       success: true,
-      message: 'Đánh giá đã được gửi thành công, đang chờ Admin duyệt',
+      message: 'Đánh giá đã được gửi thành công',
       review,
     });
 
   } catch (error) {
-    // Lỗi duplicate key từ unique index trong schema
     if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: 'Bạn đã gửi đánh giá cho bài nhạc này rồi',
-      });
+      return res.status(400).json({ success: false, message: 'Bạn đã gửi đánh giá cho bài nhạc này rồi' });
     }
     if (error.name === 'ValidationError') {
       const messages = Object.values(error.errors).map((e) => e.message);
@@ -101,69 +91,28 @@ const submitReview = async (req, res) => {
 
 
 // ════════════════════════════════════════════════════════════
-//  CONTROLLER 2: LẤY REVIEW ĐÃ DUYỆT CỦA MỘT TRACK
+//  CONTROLLER 2: LẤY REVIEW CỦA MỘT TRACK
 // ════════════════════════════════════════════════════════════
-
 /**
- * @desc    Lấy danh sách review đã được Admin duyệt của một bài nhạc
  * @route   GET /api/reviews/track/:trackId
  * @access  Private — tất cả role
  */
 const getReviewsByTrack = async (req, res) => {
   try {
     const { trackId } = req.params;
+    const page  = Math.max(1, parseInt(req.query.page)  || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+    const skip  = (page - 1) * limit;
 
-    // Kiểm tra track tồn tại
-    const trackExists = await Track.exists({ _id: trackId });
+    const trackExists = await Track.exists({ _id: trackId, status: 'published' });
     if (!trackExists) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy bài nhạc' });
     }
 
+    const total   = await Review.countDocuments({ track: trackId, status: 'approved' });
     const reviews = await Review.find({ track: trackId, status: 'approved' })
-      .populate('reviewer', 'name avatarUrl reputationScore totalReviews')
-      .sort({ createdAt: -1 });
-
-    res.status(200).json({
-      success: true,
-      count: reviews.length,
-      reviews,
-    });
-
-  } catch (error) {
-    if (error.name === 'CastError') {
-      return res.status(400).json({ success: false, message: 'ID bài nhạc không hợp lệ' });
-    }
-    console.error('[getReviewsByTrack]', error);
-    res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
-  }
-};
-
-
-// ════════════════════════════════════════════════════════════
-//  CONTROLLER 3: LẤY DANH SÁCH REVIEW ĐANG CHỜ DUYỆT (Admin)
-// ════════════════════════════════════════════════════════════
-
-/**
- * @desc    Admin xem tất cả review đang chờ duyệt
- * @route   GET /api/reviews/pending
- * @access  Private — chỉ Admin
- *
- * Query params:
- *   page  {number} - Phân trang (mặc định: 1)
- *   limit {number} - Số item mỗi trang (mặc định: 20)
- */
-const getPendingReviews = async (req, res) => {
-  try {
-    const page  = Math.max(1, parseInt(req.query.page)  || 1);
-    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
-    const skip  = (page - 1) * limit;
-
-    const total = await Review.countDocuments({ status: 'pending' });
-
-    const reviews = await Review.find({ status: 'pending' })
-      .populate('track',    'title coverUrl genre status')
-      .populate('reviewer', 'name avatarUrl reputationScore')
-      .sort({ createdAt: -1 }) // review mới nhất lên trước
+      .populate('reviewer', 'name avatarUrl totalReviews')
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
@@ -180,148 +129,107 @@ const getPendingReviews = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('[getPendingReviews]', error);
+    if (error.name === 'CastError') {
+      return res.status(400).json({ success: false, message: 'ID bài nhạc không hợp lệ' });
+    }
+    console.error('[getReviewsByTrack]', error);
     res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
   }
 };
 
 
 // ════════════════════════════════════════════════════════════
-//  CONTROLLER 4: ADMIN DUYỆT REVIEW
+//  CONTROLLER 3: LẤY REVIEW CỦA BẢN THÂN
 // ════════════════════════════════════════════════════════════
-
 /**
- * @desc    Admin duyệt một review → tự động chạy Rating Engine cập nhật điểm Track
- * @route   PATCH /api/reviews/:id/approve
- * @access  Private — chỉ Admin
- *
- * Sau khi duyệt:
- *   1. Review.status = 'approved'
- *   2. Gọi Review.calcTrackScore() (static method) để tính lại điểm tổng hợp
- *   3. Cập nhật Track: averageScore, scoreBreakdown, reviewCount, status
- *   4. Tăng reputationScore và totalReviews của Reviewer (+5 điểm)
+ * @route   GET /api/reviews/my
+ * @access  Private — user
  */
-const approveReview = async (req, res) => {
+const getMyReviews = async (req, res) => {
   try {
-    const review = await Review.findById(req.params.id);
+    const page  = Math.max(1, parseInt(req.query.page)  || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+    const skip  = (page - 1) * limit;
 
-    if (!review) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy review' });
-    }
-
-    if (review.status !== 'pending') {
-      return res.status(400).json({
-        success: false,
-        message: `Review này đã được xử lý rồi (status hiện tại: ${review.status})`,
-      });
-    }
-
-    // ── Bước 1: Cập nhật status review ───────────────────
-    review.status = 'approved';
-    await review.save();
-
-    // ── Bước 2: Chạy Rating Engine ────────────────────────
-    // Review.calcTrackScore() là static method trong Review model
-    // Dùng MongoDB Aggregation để tính trung bình từng tiêu chí chính xác nhất
-    const scoreData = await Review.calcTrackScore(review.track);
-
-    // ── Bước 3: Cập nhật điểm vào Track ──────────────────
-    const track = await Track.findById(review.track);
-
-    track.reviewCount    = scoreData.reviewCount;
-    track.scoreBreakdown = scoreData.scoreBreakdown;
-    track.averageScore   = scoreData.averageScore;
-
-    // Tự động chuyển sang 'completed' khi đủ 3 review được duyệt
-    if (scoreData.reviewCount >= 3 && track.status !== 'completed') {
-      track.status = 'completed';
-    }
-
-    await track.save();
-
-    // ── Bước 4: Tăng điểm uy tín cho Reviewer ────────────
-    await User.findByIdAndUpdate(review.reviewer, {
-      $inc: { reputationScore: 5, totalReviews: 1 },
-    });
+    const total   = await Review.countDocuments({ reviewer: req.user._id, status: 'approved' });
+    const reviews = await Review.find({ reviewer: req.user._id, status: 'approved' })
+      .populate('track', 'title coverUrl averageScore genre')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     res.status(200).json({
       success: true,
-      message: 'Review đã được duyệt và điểm Track đã cập nhật',
-      review,
-      trackUpdated: {
-        _id:            track._id,
-        title:          track.title,
-        status:         track.status,
-        averageScore:   track.averageScore,
-        reviewCount:    track.reviewCount,
-        scoreBreakdown: track.scoreBreakdown,
+      count: reviews.length,
+      reviews,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
       },
     });
 
   } catch (error) {
-    if (error.name === 'CastError') {
-      return res.status(400).json({ success: false, message: 'ID review không hợp lệ' });
-    }
-    console.error('[approveReview]', error);
-    res.status(500).json({ success: false, message: 'Lỗi máy chủ khi duyệt review' });
+    console.error('[getMyReviews]', error);
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
   }
 };
 
 
 // ════════════════════════════════════════════════════════════
-//  CONTROLLER 5: ADMIN TỪ CHỐI REVIEW
+//  CONTROLLER 4: BÁO CÁO REVIEW VI PHẠM
 // ════════════════════════════════════════════════════════════
-
 /**
- * @desc    Admin từ chối một review (vi phạm tiêu chuẩn, spam...)
- * @route   PATCH /api/reviews/:id/reject
- * @access  Private — chỉ Admin
- *
- * Body:
- *   reason {string} - Lý do từ chối (tuỳ chọn nhưng nên có)
+ * @route   POST /api/reviews/:id/report
+ * @access  Private — user
  */
-const rejectReview = async (req, res) => {
+const reportReview = async (req, res) => {
   try {
     const review = await Review.findById(req.params.id);
 
-    if (!review) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy review' });
+    if (!review || review.status !== 'approved') {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đánh giá' });
     }
 
-    if (review.status !== 'pending') {
-      return res.status(400).json({
-        success: false,
-        message: `Review này đã được xử lý rồi (status hiện tại: ${review.status})`,
-      });
+    // Không báo cáo review của chính mình
+    if (review.reviewer.toString() === req.user._id.toString()) {
+      return res.status(400).json({ success: false, message: 'Bạn không thể báo cáo đánh giá của chính mình' });
     }
 
-    review.status          = 'rejected';
-    review.rejectionReason = req.body.reason?.trim() || '';
-    await review.save();
+    const { reason, description } = req.body;
+    if (!reason) {
+      return res.status(400).json({ success: false, message: 'Vui lòng chọn lý do báo cáo' });
+    }
 
-    // Nếu track vẫn là 'reviewing' nhưng không còn review nào pending nữa
-    // → kiểm tra xem có còn review pending/approved không, nếu 0 thì về 'pending'
-    const remainingReviews = await Review.countDocuments({
-      track:  review.track,
-      status: { $in: ['pending', 'approved'] },
+    // Kiểm tra đã báo cáo chưa
+    const existing = await Report.findOne({ reportedBy: req.user._id, targetId: review._id });
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'Bạn đã báo cáo đánh giá này rồi' });
+    }
+
+    await Report.create({
+      targetType:  'review',
+      targetId:    review._id,
+      targetModel: 'Review',
+      reportedBy:  req.user._id,
+      reason,
+      description: description?.trim() || '',
     });
 
-    if (remainingReviews === 0) {
-      await Track.findByIdAndUpdate(review.track, { status: 'pending' });
-    }
+    await Review.findByIdAndUpdate(review._id, { $inc: { reportCount: 1 } });
 
-    res.status(200).json({
-      success: true,
-      message: 'Review đã bị từ chối',
-      review,
-    });
+    res.status(201).json({ success: true, message: 'Báo cáo đã được gửi thành công' });
 
   } catch (error) {
-    if (error.name === 'CastError') {
-      return res.status(400).json({ success: false, message: 'ID review không hợp lệ' });
+    if (error.code === 11000) {
+      return res.status(400).json({ success: false, message: 'Bạn đã báo cáo đánh giá này rồi' });
     }
-    console.error('[rejectReview]', error);
-    res.status(500).json({ success: false, message: 'Lỗi máy chủ khi từ chối review' });
+    if (error.name === 'CastError') {
+      return res.status(400).json({ success: false, message: 'ID đánh giá không hợp lệ' });
+    }
+    console.error('[reportReview]', error);
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
   }
 };
 
@@ -332,7 +240,6 @@ const rejectReview = async (req, res) => {
 module.exports = {
   submitReview,
   getReviewsByTrack,
-  getPendingReviews,
-  approveReview,
-  rejectReview,
+  getMyReviews,
+  reportReview,
 };

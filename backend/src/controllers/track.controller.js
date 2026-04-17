@@ -1,31 +1,22 @@
 const Track  = require('../models/Track');
 const Review = require('../models/Review');
+const Report = require('../models/Report');
+const User   = require('../models/User');
 const { cloudinary } = require('../config/cloudinary');
 
 // ════════════════════════════════════════════════════════════
 //  CONTROLLER 1: UPLOAD BÀI NHẠC
 // ════════════════════════════════════════════════════════════
-
 /**
- * @desc    Artist upload bài nhạc mới lên nền tảng
+ * @desc    User (bất kỳ) upload bài nhạc mới
  * @route   POST /api/tracks
- * @access  Private — chỉ Artist
- *
- * Body (multipart/form-data):
- *   audio        {file}    - File nhạc bắt buộc (MP3/WAV/FLAC/AAC, tối đa 50MB)
- *   cover        {file}    - Ảnh bìa tuỳ chọn (JPG/PNG/WEBP, tối đa 5MB)
- *   title        {string}  - Tên bài nhạc
- *   genre        {string}  - Thể loại: pop|rock|jazz|classical|hiphop|electronic|folk|other
- *   description  {string}  - Mô tả ngắn
- *   tags         {string}  - JSON array string, vd: '["ballad","acoustic"]'
+ * @access  Private — user, admin
  */
 const uploadTrack = async (req, res) => {
   try {
-    // req.files được xử lý bởi multer middleware uploadTrackFields ở routes
     const audioFile = req.files?.audio?.[0];
     const coverFile = req.files?.cover?.[0];
 
-    // ── 1. Bắt buộc phải có file nhạc ─────────────────────
     if (!audioFile) {
       return res.status(400).json({
         success: false,
@@ -36,30 +27,18 @@ const uploadTrack = async (req, res) => {
     const { title, genre, description, tags } = req.body;
 
     if (!title || !title.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Tên bài nhạc không được để trống',
-      });
+      return res.status(400).json({ success: false, message: 'Tên bài nhạc không được để trống' });
     }
 
-    // ── 2. Parse tags từ JSON string ──────────────────────
     let parsedTags = [];
     if (tags) {
       try {
         parsedTags = JSON.parse(tags);
         if (!Array.isArray(parsedTags)) parsedTags = [];
-        parsedTags = parsedTags
-          .map((t) => String(t).trim().toLowerCase())
-          .filter(Boolean)
-          .slice(0, 10); // giới hạn tối đa 10 tags
-      } catch {
-        parsedTags = [];
-      }
+        parsedTags = parsedTags.map((t) => String(t).trim().toLowerCase()).filter(Boolean).slice(0, 10);
+      } catch { parsedTags = []; }
     }
 
-    // ── 3. Tạo track document ──────────────────────────────
-    // audioFile.path     = URL công khai trên Cloudinary
-    // audioFile.filename = public_id để xoá về sau
     const trackData = {
       title:         title.trim(),
       genre:         genre || 'other',
@@ -68,6 +47,7 @@ const uploadTrack = async (req, res) => {
       artist:        req.user._id,
       audioUrl:      audioFile.path,
       audioPublicId: audioFile.filename,
+      status:        'published', // Hiển thị công khai ngay
     };
 
     if (coverFile) {
@@ -78,9 +58,12 @@ const uploadTrack = async (req, res) => {
     const track = await Track.create(trackData);
     await track.populate('artist', 'name avatarUrl');
 
+    // Tăng totalTracks của user
+    await User.findByIdAndUpdate(req.user._id, { $inc: { totalTracks: 1 } });
+
     res.status(201).json({
       success: true,
-      message: 'Upload bài nhạc thành công, đang chờ reviewer đánh giá',
+      message: 'Upload bài nhạc thành công',
       track,
     });
 
@@ -98,52 +81,40 @@ const uploadTrack = async (req, res) => {
 // ════════════════════════════════════════════════════════════
 //  CONTROLLER 2: LẤY DANH SÁCH BÀI NHẠC
 // ════════════════════════════════════════════════════════════
-
 /**
- * @desc    Lấy danh sách bài nhạc có lọc, tìm kiếm và phân trang
+ * @desc    Lấy danh sách bài nhạc
  * @route   GET /api/tracks
  * @access  Private — tất cả role
  *
- * Query params:
- *   page    {number}  - Trang hiện tại (mặc định: 1)
- *   limit   {number}  - Số bài mỗi trang (mặc định: 10, tối đa: 50)
- *   status  {string}  - pending | reviewing | completed
- *   genre   {string}  - Lọc theo thể loại
- *   search  {string}  - Tìm full-text theo title và tags
+ * user  → chỉ thấy track published
+ * admin → thấy tất cả (kể cả removed)
  *
- * Phân quyền:
- *   artist   → chỉ thấy bài của chính mình
- *   reviewer → chỉ thấy bài pending + reviewing
- *   admin    → thấy tất cả
+ * Query: page, limit, genre, search, artistId
  */
 const getTracks = async (req, res) => {
   try {
     const page  = Math.max(1, parseInt(req.query.page)  || 1);
-    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
-    const { status, genre, search } = req.query;
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 12));
+    const { genre, search, artistId, myTracks } = req.query;
     const filter = {};
 
-    // ── Phân quyền theo role ──────────────────────────────
-    if (req.user.role === 'artist') {
+    if (req.user.role !== 'admin') {
+      filter.status = 'published';
+    }
+
+    // Lọc track của mình
+    if (myTracks === 'true') {
       filter.artist = req.user._id;
-
-    } else if (req.user.role === 'reviewer') {
-      // Reviewer mặc định chỉ thấy bài chờ review
-      filter.status = (status && ['pending', 'reviewing'].includes(status))
-        ? status
-        : { $in: ['pending', 'reviewing'] };
     }
 
-    // ── Filter từ query params (áp dụng cho artist và admin) ─
-    if (req.user.role !== 'reviewer') {
-      if (status) filter.status = status;
-    }
+    // Lọc theo nghệ sĩ cụ thể
+    if (artistId) filter.artist = artistId;
+
     if (genre) filter.genre = genre;
     if (search && search.trim()) {
       filter.$text = { $search: search.trim() };
     }
 
-    // ── Truy vấn DB ───────────────────────────────────────
     const skip  = (page - 1) * limit;
     const total = await Track.countDocuments(filter);
     const tracks = await Track.find(filter)
@@ -176,9 +147,7 @@ const getTracks = async (req, res) => {
 // ════════════════════════════════════════════════════════════
 //  CONTROLLER 3: CHI TIẾT MỘT BÀI NHẠC
 // ════════════════════════════════════════════════════════════
-
 /**
- * @desc    Lấy chi tiết một bài nhạc theo ID
  * @route   GET /api/tracks/:id
  * @access  Private — tất cả role
  */
@@ -191,15 +160,9 @@ const getTrackById = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy bài nhạc' });
     }
 
-    // Artist chỉ được xem bài của mình
-    if (
-      req.user.role === 'artist' &&
-      track.artist._id.toString() !== req.user._id.toString()
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: 'Bạn không có quyền xem bài nhạc này',
-      });
+    // User chỉ thấy track published (admin thấy tất cả)
+    if (req.user.role !== 'admin' && track.status !== 'published') {
+      return res.status(404).json({ success: false, message: 'Bài nhạc không còn tồn tại' });
     }
 
     res.status(200).json({ success: true, track });
@@ -217,11 +180,9 @@ const getTrackById = async (req, res) => {
 // ════════════════════════════════════════════════════════════
 //  CONTROLLER 4: XOÁ BÀI NHẠC
 // ════════════════════════════════════════════════════════════
-
 /**
- * @desc    Xoá bài nhạc + file Cloudinary + toàn bộ review liên quan
  * @route   DELETE /api/tracks/:id
- * @access  Private — Artist (chỉ bài của mình) hoặc Admin
+ * @access  Private — user (chỉ bài của mình) hoặc admin
  */
 const deleteTrack = async (req, res) => {
   try {
@@ -235,34 +196,25 @@ const deleteTrack = async (req, res) => {
     const isAdmin = req.user.role === 'admin';
 
     if (!isOwner && !isAdmin) {
-      return res.status(403).json({
-        success: false,
-        message: 'Bạn không có quyền xoá bài nhạc này',
-      });
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền xoá bài nhạc này' });
     }
 
-    // ── Xoá file audio trên Cloudinary ───────────────────
     if (track.audioPublicId) {
-      try {
-        await cloudinary.uploader.destroy(track.audioPublicId, { resource_type: 'video' });
-      } catch (cdnErr) {
-        console.warn('[deleteTrack] Xoá audio Cloudinary thất bại:', cdnErr.message);
-      }
+      try { await cloudinary.uploader.destroy(track.audioPublicId, { resource_type: 'video' }); }
+      catch (cdnErr) { console.warn('[deleteTrack] Xoá audio Cloudinary thất bại:', cdnErr.message); }
     }
 
-    // ── Xoá ảnh bìa trên Cloudinary ──────────────────────
     if (track.coverPublicId) {
-      try {
-        await cloudinary.uploader.destroy(track.coverPublicId, { resource_type: 'image' });
-      } catch (cdnErr) {
-        console.warn('[deleteTrack] Xoá cover Cloudinary thất bại:', cdnErr.message);
-      }
+      try { await cloudinary.uploader.destroy(track.coverPublicId, { resource_type: 'image' }); }
+      catch (cdnErr) { console.warn('[deleteTrack] Xoá cover Cloudinary thất bại:', cdnErr.message); }
     }
 
-    // ── Xoá tất cả review của bài này ────────────────────
     await Review.deleteMany({ track: track._id });
-
+    await Report.deleteMany({ targetId: track._id, targetType: 'track' });
     await track.deleteOne();
+
+    // Giảm totalTracks của user
+    await User.findByIdAndUpdate(track.artist, { $inc: { totalTracks: -1 } });
 
     res.status(200).json({ success: true, message: 'Đã xoá bài nhạc thành công' });
 
@@ -279,11 +231,9 @@ const deleteTrack = async (req, res) => {
 // ════════════════════════════════════════════════════════════
 //  CONTROLLER 5: THỐNG KÊ CHI TIẾT BÀI NHẠC
 // ════════════════════════════════════════════════════════════
-
 /**
- * @desc    Báo cáo đầy đủ: điểm tổng hợp + danh sách review được duyệt
  * @route   GET /api/tracks/:id/stats
- * @access  Private — Artist (chỉ bài của mình) hoặc Admin
+ * @access  Private — chủ bài hoặc admin
  */
 const getTrackStats = async (req, res) => {
   try {
@@ -298,14 +248,11 @@ const getTrackStats = async (req, res) => {
     const isAdmin = req.user.role === 'admin';
 
     if (!isOwner && !isAdmin) {
-      return res.status(403).json({
-        success: false,
-        message: 'Bạn không có quyền xem thống kê bài nhạc này',
-      });
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền xem thống kê bài nhạc này' });
     }
 
     const reviews = await Review.find({ track: req.params.id, status: 'approved' })
-      .populate('reviewer', 'name avatarUrl reputationScore totalReviews')
+      .populate('reviewer', 'name avatarUrl totalReviews')
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -331,6 +278,63 @@ const getTrackStats = async (req, res) => {
 
 
 // ════════════════════════════════════════════════════════════
+//  CONTROLLER 6: BÁO CÁO BÀI NHẠC VI PHẠM
+// ════════════════════════════════════════════════════════════
+/**
+ * @route   POST /api/tracks/:id/report
+ * @access  Private — user
+ */
+const reportTrack = async (req, res) => {
+  try {
+    const track = await Track.findById(req.params.id);
+
+    if (!track || track.status !== 'published') {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy bài nhạc' });
+    }
+
+    // Không cho báo cáo bài của chính mình
+    if (track.artist.toString() === req.user._id.toString()) {
+      return res.status(400).json({ success: false, message: 'Bạn không thể báo cáo bài nhạc của chính mình' });
+    }
+
+    const { reason, description } = req.body;
+    if (!reason) {
+      return res.status(400).json({ success: false, message: 'Vui lòng chọn lý do báo cáo' });
+    }
+
+    // Kiểm tra đã báo cáo chưa
+    const existing = await Report.findOne({ reportedBy: req.user._id, targetId: track._id });
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'Bạn đã báo cáo bài nhạc này rồi' });
+    }
+
+    await Report.create({
+      targetType:  'track',
+      targetId:    track._id,
+      targetModel: 'Track',
+      reportedBy:  req.user._id,
+      reason,
+      description: description?.trim() || '',
+    });
+
+    await Track.findByIdAndUpdate(track._id, { $inc: { reportCount: 1 } });
+
+    res.status(201).json({ success: true, message: 'Báo cáo đã được gửi thành công' });
+
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ success: false, message: 'Bạn đã báo cáo bài nhạc này rồi' });
+    }
+    if (error.name === 'CastError') {
+      return res.status(400).json({ success: false, message: 'ID bài nhạc không hợp lệ' });
+    }
+    console.error('[reportTrack]', error);
+    res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
+  }
+};
+
+
+// ════════════════════════════════════════════════════════════
 //  EXPORT
 // ════════════════════════════════════════════════════════════
-module.exports = { uploadTrack, getTracks, getTrackById, deleteTrack, getTrackStats };
+module.exports = { uploadTrack, getTracks, getTrackById, deleteTrack, getTrackStats, reportTrack };

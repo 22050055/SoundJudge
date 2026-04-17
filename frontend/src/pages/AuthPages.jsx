@@ -463,16 +463,15 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading]   = useState(false);
 
-  // Nếu đã đăng nhập → redirect về dashboard
   useEffect(() => {
     if (isAuthenticated && user) {
-      const role = user.role;
       const redirect = sessionStorage.getItem('redirectAfterLogin');
       sessionStorage.removeItem('redirectAfterLogin');
       if (redirect && redirect !== '/login' && redirect !== '/register') {
         navigate(redirect, { replace: true });
       } else {
-        navigate(`/dashboard/${role}`, { replace: true });
+        const dest = user.role === 'admin' ? '/dashboard/admin' : '/dashboard/home';
+        navigate(dest, { replace: true });
       }
     }
   }, [isAuthenticated, user, navigate]);
@@ -494,7 +493,8 @@ export function LoginPage() {
       if (redirect && redirect !== '/login') {
         navigate(redirect, { replace: true });
       } else {
-        navigate(`/dashboard/${loggedUser.role}`, { replace: true });
+        const dest = loggedUser.role === 'admin' ? '/dashboard/admin' : '/dashboard/home';
+        navigate(dest, { replace: true });
       }
     } catch {
       // authError đã được set bởi AuthContext
@@ -561,18 +561,7 @@ export function LoginPage() {
 
 // ─── REGISTER PAGE ─────────────────────────────────────────────
 
-const ROLE_OPTIONS = [
-  {
-    value: 'artist',
-    name: '🎵 Artist',
-    desc: 'Upload nhạc và nhận phản hồi chuyên sâu từ reviewer.',
-  },
-  {
-    value: 'reviewer',
-    name: '🎧 Reviewer',
-    desc: 'Đánh giá bài nhạc và xây dựng điểm uy tín.',
-  },
-];
+// Không còn lựa chọn role khi đăng ký — tất cả đều là 'user'
 
 export function RegisterPage() {
   const { register, authError, clearAuthError, isAuthenticated, user } = useAuth();
@@ -582,14 +571,14 @@ export function RegisterPage() {
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [confirm,  setConfirm]  = useState('');
-  const [role,     setRole]     = useState('artist');
   const [loading,  setLoading]  = useState(false);
   const [localError, setLocalError] = useState('');
 
   // Nếu đã đăng nhập → redirect
   useEffect(() => {
     if (isAuthenticated && user) {
-      navigate(`/dashboard/${user.role}`, { replace: true });
+      const dest = user.role === 'admin' ? '/dashboard/admin' : '/dashboard/home';
+      navigate(dest, { replace: true });
     }
   }, [isAuthenticated, user, navigate]);
 
@@ -623,8 +612,9 @@ export function RegisterPage() {
 
     setLoading(true);
     try {
-      const newUser = await register(name.trim(), email, password, role);
-      navigate(`/dashboard/${newUser.role}`, { replace: true });
+      const newUser = await register(name.trim(), email, password);
+      const dest = newUser.role === 'admin' ? '/dashboard/admin' : '/dashboard/home';
+      navigate(dest, { replace: true });
     } catch {
       // authError đã được set bởi AuthContext
     } finally {
@@ -693,23 +683,7 @@ export function RegisterPage() {
             error={confirm && password !== confirm}
           />
 
-          {/* Role selector */}
-          <div className="auth-field">
-            <span className="auth-label">Vai trò của bạn</span>
-            <div className="auth-role-grid">
-              {ROLE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  className={`auth-role-btn ${role === opt.value ? 'selected' : ''}`}
-                  onClick={() => { clearErrors(); setRole(opt.value); }}
-                >
-                  <span className="auth-role-name">{opt.name}</span>
-                  <span className="auth-role-desc">{opt.desc}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+
 
           <button
             type="submit"

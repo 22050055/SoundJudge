@@ -1,9 +1,13 @@
-# 🎵 SoundJudge — Nền tảng đánh giá âm nhạc
+# 🎵 SoundJudge — Nền tảng Đánh giá m nhạc (Community Platform)
 
-## Cấu trúc thư mục đầy đủ
+SoundJudge là một nền tảng âm nhạc mở được xây dựng dựa trên nguyên tắc **cộng đồng**. Mọi người dùng đều có thể tự do tải lên các sáng tác cá nhân, nghe và đánh giá âm nhạc của những thành viên khác, nhận xét chi tiết thông qua các tiêu chí chuyên môn và xây dựng uy tín cá nhân trên nền tảng.
 
-```
-music-platform/
+---
+
+## 📂 Cơ sở hạ tầng (Cấu trúc thư mục)
+
+```text
+SoundJudge/
 │
 ├── backend/                          ← Server Node.js/Express
 │   ├── src/
@@ -12,111 +16,115 @@ music-platform/
 │   │   │   └── cloudinary.js         ← Cấu hình lưu file nhạc/ảnh
 │   │   │
 │   │   ├── models/                   ← Schemas MongoDB
-│   │   │   ├── User.js               ← Model người dùng (artist/reviewer/admin)
-│   │   │   ├── Track.js              ← Model bài nhạc
-│   │   │   └── Review.js             ← Model đánh giá (5 tiêu chí)
+│   │   │   ├── User.js               ← Model người dùng (hỗ trợ role, followers/following, báo cáo)
+│   │   │   ├── Track.js              ← Model bài nhạc (hỗ trợ báo cáo vi phạm)
+│   │   │   ├── Review.js             ← Model đánh giá (5 tiêu chí)
+│   │   │   └── Report.js             ← Model hệ thống báo cáo vi phạm tập trung
 │   │   │
 │   │   ├── middleware/
-│   │   │   └── auth.js               ← Xác thực JWT + phân quyền theo role
+│   │   │   └── auth.js               ← Xác thực JWT + phân quyền (user/admin)
 │   │   │
 │   │   ├── controllers/              ← Logic nghiệp vụ
-│   │   │   ├── auth.controller.js    ← Đăng ký, đăng nhập, lấy thông tin user
-│   │   │   ├── track.controller.js   ← Upload, lấy danh sách, xóa, thống kê
-│   │   │   ├── review.controller.js  ← Gửi review, duyệt, Rating Engine
-│   │   │   └── admin.controller.js   ← Thống kê, quản lý user/track
+│   │   │   ├── auth.controller.js    ← Đăng ký, đăng nhập
+│   │   │   ├── track.controller.js   ← Upload, lấy danh sách nhạc, lấy thông tin cá nhân
+│   │   │   ├── review.controller.js  ← Chấm bài, lấy danh sách đánh giá
+│   │   │   ├── follow.controller.js  ← Thao tác follow / unfollow người dùng
+│   │   │   ├── report.controller.js  ← Nơi xử lý gửi báo cáo vi phạm
+│   │   │   └── admin.controller.js   ← Resolve report, xóa review, đóng băng tài khoản (admin)
 │   │   │
 │   │   ├── routes/                   ← Định nghĩa API endpoints
-│   │   │   ├── auth.routes.js        ← POST /api/auth/register, /login, GET /me
-│   │   │   ├── track.routes.js       ← CRUD /api/tracks
-│   │   │   ├── review.routes.js      ← CRUD /api/reviews
-│   │   │   └── admin.routes.js       ← /api/admin/*
+│   │   │   └── ... (chia theo tính năng logic)
+│   │   │
+│   │   ├── scripts/
+│   │   │   └── migrate-roles.js      ← Cập nhật schema khi chuyển sang mô hình Community
 │   │   │
 │   │   └── app.js                    ← Entry point: Express app + Swagger
 │   │
-│   ├── .env.example                  ← Mẫu biến môi trường
 │   └── package.json
 │
 └── frontend/                         ← Client React.js (Vite)
-    ├── index.html                    ← HTML gốc, import font Playfair + DM Sans
-    ├── vite.config.js                ← Config Vite + proxy /api → localhost:5000
-    ├── package.json
-    │
-    └── src/
-        ├── main.jsx                  ← Entry point React + global styles
-        ├── App.jsx                   ← Router chính (React Router v6)
-        │
-        ├── api/
-        │   └── axios.js              ← Axios instance + interceptors (token, 401)
-        │
-        ├── context/
-        │   └── AuthContext.jsx       ← Global auth state (user, login, logout)
-        │
-        ├── pages/
-        │   └── AuthPages.jsx         ← Trang đăng nhập + đăng ký
-        │
-        └── components/
-            ├── common/
-            │   ├── Navbar.jsx        ← Thanh điều hướng (thay đổi theo role)
-            │   ├── MusicPlayer.jsx   ← Trình phát nhạc tích hợp
-            │   └── ProtectedRoute.jsx← Bảo vệ route (yêu cầu đăng nhập/role)
-            │
-            ├── artist/
-            │   ├── ArtistDashboard.jsx ← Grid hiển thị kho nhạc + badge trạng thái
-            │   ├── UploadTrack.jsx     ← Form upload nhạc + ảnh bìa
-            │   └── TrackStats.jsx      ← Biểu đồ radar + danh sách reviews
-            │
-            ├── reviewer/
-            │   ├── ReviewerWorkspace.jsx ← Sidebar bài chờ + khu vực nghe/chấm
-            │   └── RatingForm.jsx        ← Form 5 tiêu chí + thanh trượt
-            │
-            └── admin/
-                └── AdminDashboard.jsx   ← Stats tổng quan + duyệt review + quản lý user
+    ├── src/
+    │   ├── main.jsx                  ← Entry point React
+    │   ├── App.jsx                   ← Master router (Quản lý User & Admin)
+    │   │
+    │   ├── api/
+    │   │   └── axiosConfig.js        ← Cấu hình Axios request & intercept 401
+    │   │
+    │   ├── context/
+    │   │   └── AuthContext.jsx       ← Global auth state
+    │   │
+    │   ├── components/
+    │   │   ├── common/
+    │   │   │   ├── Navbar.jsx        ← Thanh điều hướng (Profile Link, Auth, Badge)
+    │   │   │   ├── RatingForm.jsx    ← Component module chấm điểm 5 tiêu chí
+    │   │   │   └── ReportModal.jsx   ← Modal báo cáo tập trung (Tái sử dụng)
+    │   │   │
+    │   │   ├── user/
+    │   │   │   ├── UserDashboard.jsx ← (🌐 Khám phá, 🎧 Nhạc của tôi, 💬 Review của tôi)
+    │   │   │   ├── ProfilePage.jsx   ← Trang thành viên (Follow / Reputation score)
+    │   │   │   ├── UploadTrack.jsx   ← Tải nhạc (upload)
+    │   │   │   └── TrackStats.jsx    ← Hiển thị chi tiết và đồ thị màng nhện (Radar Chart)
+    │   │   │
+    │   │   └── admin/
+    │   │       └── AdminDashboard.jsx ← Tích hợp (Overview, Manage Users, Reviews, Reports)
+    │   │
+    │   └── pages/
+    │       └── AuthPages.jsx         ← Layout Register & Login (Dành cho nền tảng mở)
 ```
 
 ---
 
-## Luồng nghiệp vụ chính
+## 🔄 Luồng Nghiệp vụ Cộng đồng (Workflow)
 
-```
-Artist upload → [pending]
+```text
+1. BẤT QUẢN LÍ
+User 1 tải nhạc lên hệ thống → Trạng thái bài hát mặc định là [published] (Đã xuất bản).
      ↓
-Reviewer chọn bài → nghe → chấm điểm 5 tiêu chí → gửi review → [reviewing]
+2. TƯƠNG TÁC XÃ HỘI
+User 2 nghe và đánh giá (Rating) bài nhạc qua form 5 tiêu chí.
+Review này được tự động cập nhật hệ thống là [approved] → User 2 nhận điểm Uy tín (Reputation).
      ↓
-Admin duyệt review → Rating Engine tính điểm tổng hợp → Reviewer +5 điểm uy tín
+3. HIỂN THỊ
+User 1 vào trang Thống Kê (TrackStats) để xem radar chart và kiểm tra điểm từ User 2.
+User 1 có thể Follow User 2 trên nền tảng mở.
      ↓
-Sau 3 review được duyệt → Track [completed] → Artist xem báo cáo đầy đủ
+4. BÁO CÁO & QUẢN TRỊ
+Nếu Track hoặc Review vi phạm (Spam/Copyright), một User bất kì có thể ấn Báo cáo (Report).
+Admin nhận thông báo trên Dashboard → Đánh giá vi phạm → Tiêu hủy nội dung (nếu có).
 ```
 
-## API Endpoints tóm tắt
+## 🔌 API Endpoints nổi bật
 
 | Method | Endpoint                        | Role       | Mô tả                        |
 |--------|---------------------------------|------------|------------------------------|
-| POST   | /api/auth/register              | Public     | Đăng ký tài khoản            |
-| POST   | /api/auth/login                 | Public     | Đăng nhập                    |
-| GET    | /api/auth/me                    | Any        | Thông tin user hiện tại      |
-| POST   | /api/tracks                     | Artist     | Upload bài nhạc              |
-| GET    | /api/tracks                     | Any        | Danh sách bài nhạc           |
-| GET    | /api/tracks/:id/stats           | Artist     | Thống kê chi tiết bài nhạc   |
-| POST   | /api/reviews                    | Reviewer   | Gửi đánh giá                 |
-| GET    | /api/reviews/pending            | Admin      | Danh sách review chờ duyệt   |
-| PATCH  | /api/reviews/:id/approve        | Admin      | Duyệt review + cập nhật điểm |
-| GET    | /api/admin/stats                | Admin      | Thống kê tổng quan           |
-| PATCH  | /api/admin/users/:id/toggle     | Admin      | Khóa/mở tài khoản            |
-| GET    | /api/docs                       | Public     | Swagger UI                   |
+| POST   | /api/auth/register              | Public     | Đăng ký tài khoản (Mặc định Role: user) |
+| GET    | /api/auth/me                    | Lợi ích      | Thông tin user theo Cookie Token |
+| POST   | /api/tracks                     | User       | Đăng nhạc                    |
+| GET    | /api/tracks                     | Any        | Tìm kiếm, Query kho nhạc     |
+| GET    | /api/tracks/:id/stats           | Any        | Render điểm Radar             |
+| POST   | /api/reviews                    | User       | Submitting bài đánh giá 5 tiêu chí |
+| POST   | /api/users/:id/follow           | User       | Follow User                  |
+| POST   | /api/tracks/:id/report          | User       | Report báo cáo hệ thống               |
+| PATCH  | /api/admin/reports/:id/resolve  | Admin      | Admin phán quyết Report      |
 
-## Cài đặt & Chạy
+## 🚀 Cài đặt & Chạy (Environment Setups)
 
-### Backend
+### 1. File môi trường (.env)
+Để cả hệ thống hoạt động, hãy thiết lập biến môi trường ở mục `backend/.env`. (Đã được tạo sẵn theo Cluster Setup).
+
+### 2. Khởi chạy Backend (Node/Express)
+Mở Terminal, di chuyển tới thư mục `backend`:
 ```bash
 cd backend
 npm install
-cp .env.example .env   # điền thông tin MongoDB + Cloudinary
-npm run dev            # chạy tại http://localhost:5000
+node src/scripts/migrate-roles.js   # (Setup array cho DB)
+npm run dev                         # chạy lại tại http://localhost:5000
 ```
 
-### Frontend
+### 3. Khởi chạy Frontend (React/Vite)
+Mở thêm một panel Terminal mới, di chuyển về Frontend:
 ```bash
 cd frontend
 npm install
-npm run dev            # chạy tại http://localhost:5173
+npm run dev                         # truy cập Giao diện Web: http://localhost:5173
 ```

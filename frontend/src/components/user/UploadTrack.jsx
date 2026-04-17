@@ -582,7 +582,7 @@ export default function UploadTrack() {
         },
       });
       setSuccess('Upload thành công! Bài nhạc đang chờ reviewer đánh giá.');
-      setTimeout(() => navigate('/dashboard/artist'), 2000);
+      setTimeout(() => navigate('/dashboard/home'), 2000);
     } catch (err) {
       setError(extractErrorMessage(err, 'Upload thất bại, vui lòng thử lại'));
       setProgress(0);
@@ -598,7 +598,7 @@ export default function UploadTrack() {
       <style>{CSS}</style>
 
       <div className="ut-root">
-        <Link to="/dashboard/artist" className="ut-back">← Quay lại kho nhạc</Link>
+        <Link to="/dashboard/home" className="ut-back">← Quay lại</Link>
 
         <div className="ut-header">
           <h1>Upload bài nhạc</h1>
