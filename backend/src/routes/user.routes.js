@@ -1,3 +1,4 @@
+const router = require('express').Router();
 const { protect, authorize, optionalProtect } = require('../middleware/auth');
 const { getUserProfile } = require('../controllers/auth.controller');
 const {

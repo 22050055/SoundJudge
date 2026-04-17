@@ -1,3 +1,5 @@
+const router = require('express').Router();
+const { body, validationResult } = require('express-validator');
 const { protect, authorize, optionalProtect } = require('../middleware/auth');
 const {
   submitReview,
