@@ -83,6 +83,10 @@ router
   .post(protect, authorize('user', 'admin'), uploadTrackFields, handleUploadError, uploadTrack)
   .get(optionalProtect, getTracks);
 
+// GET /api/tracks/favorites — Lấy danh sách yêu thích
+// Cần đặt TRƯỚC các route có :id để tránh bị match nhầm "favorites" thành ID
+router.get('/favorites', protect, getFavorites);
+
 // GET /api/tracks/:id   — Chi tiết bài nhạc
 // DELETE /api/tracks/:id — User xóa bài mình, admin xóa bất kỳ
 router
@@ -95,9 +99,6 @@ router.get('/:id/stats', optionalProtect, getTrackStats);
 
 // POST /api/tracks/:id/report — User báo cáo bài vi phạm
 router.post('/:id/report', protect, authorize('user'), reportTrack);
-
-// GET /api/tracks/favorites — Lấy danh sách yêu thích (Cần đặt TRƯỚC các route có :id để tránh bị match nhầm)
-router.get('/favorites', protect, getFavorites);
 
 // POST /api/tracks/:id/favorite — Yêu thích / Bỏ yêu thích
 router.post('/:id/favorite', protect, toggleFavorite);
