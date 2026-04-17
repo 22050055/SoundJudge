@@ -1,6 +1,4 @@
-const router = require('express').Router();
-const { body, validationResult } = require('express-validator');
-const { protect, authorize } = require('../middleware/auth');
+const { protect, authorize, optionalProtect } = require('../middleware/auth');
 const {
   submitReview,
   getReviewsByTrack,
@@ -38,7 +36,7 @@ const scoresRules = () =>
 //  ROUTES
 // ════════════════════════════════════════════════════════════
 
-// POST /api/reviews — Bất kỳ user nào cũng gửi được đánh giá
+// POST /api/reviews — Bất kỳ user nào cũng gửi được đánh giá (cần đăng nhập)
 router.post(
   '/',
   protect,
@@ -55,11 +53,11 @@ router.post(
   submitReview
 );
 
-// GET /api/reviews/my — Lịch sử review của bản thân
+// GET /api/reviews/my — Lịch sử review của bản thân (cần đăng nhập)
 router.get('/my', protect, getMyReviews);
 
-// GET /api/reviews/track/:trackId — Reviews của một bài nhạc
-router.get('/track/:trackId', protect, getReviewsByTrack);
+// GET /api/reviews/track/:trackId — Reviews của một bài nhạc (Public)
+router.get('/track/:trackId', optionalProtect, getReviewsByTrack);
 
 // POST /api/reviews/:id/report — Báo cáo review
 router.post(

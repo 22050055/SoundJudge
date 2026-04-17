@@ -121,7 +121,46 @@ const authorize = (...roles) => {
 };
 
 
+/**
+ * optionalProtect
+ * Giống protect nhưng KHÔNG trả về lỗi nếu không có token.
+ * Nếu có token hợp lệ -> gán req.user.
+ * Nếu không có token hoặc token sai -> req.user = null, vẫn cho đi tiếp (next).
+ * Dùng cho các route Public nhưng vẫn muốn biết user là ai (nếu có).
+ */
+const optionalProtect = async (req, res, next) => {
+  try {
+    let token;
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+
+    if (!token) {
+      req.user = null;
+      return next();
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const currentUser = await User.findById(decoded.id);
+
+    if (currentUser && currentUser.isActive) {
+      if (currentUser.role === 'artist' || currentUser.role === 'reviewer') {
+        currentUser.role = 'user';
+      }
+      req.user = currentUser;
+    } else {
+      req.user = null;
+    }
+    next();
+  } catch (error) {
+    // Nếu token lỗi (hết hạn, sai ký...) -> coi như không có user, vẫn cho đi tiếp
+    req.user = null;
+    next();
+  }
+};
+
+
 // ════════════════════════════════════════════════════════════
 //  EXPORT
 // ════════════════════════════════════════════════════════════
-module.exports = { protect, authorize };
+module.exports = { protect, authorize, optionalProtect };

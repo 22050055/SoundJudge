@@ -118,7 +118,7 @@ const getTracks = async (req, res) => {
     const { genre, search, artistId, myTracks } = req.query;
     const filter = {};
 
-    if (req.user.role !== 'admin') {
+    if (!req.user || req.user.role !== 'admin') {
       // Cho phép cả các trạng thái cũ chưa chạy migration để dễ dàng hiển thị bài nhạc hơn.
       filter.status = { $in: ['published', 'pending', 'reviewing', 'completed'] };
     }
@@ -181,8 +181,9 @@ const getTrackById = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy bài nhạc' });
     }
 
-    // User chỉ thấy track published (admin thấy tất cả)
-    if (req.user.role !== 'admin' && track.status !== 'published') {
+    // User thường chỉ thấy track published (admin thấy tất cả)
+    const isAdmin = req.user && req.user.role === 'admin';
+    if (!isAdmin && track.status !== 'published') {
       return res.status(404).json({ success: false, message: 'Bài nhạc không còn tồn tại' });
     }
 
@@ -265,12 +266,15 @@ const getTrackStats = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy bài nhạc' });
     }
 
-    const isOwner = track.artist._id.toString() === req.user._id.toString();
-    const isAdmin = req.user.role === 'admin';
-
-    if (!isOwner && !isAdmin) {
-      return res.status(403).json({ success: false, message: 'Bạn không có quyền xem thống kê bài nhạc này' });
-    }
+    // [SoundJudge] Mở khoá stats cho tất cả mọi người xem.
+    // Chỉ giới hạn một số thông tin nhạy cảm (nếu có) sau này.
+    // Hiện tại cho phép xem tổng quan điểm và review.
+    
+    // const isOwner = track.artist._id.toString() === req.user._id.toString();
+    // const isAdmin = req.user.role === 'admin';
+    // if (!isOwner && !isAdmin) {
+    //   return res.status(403).json({ success: false, message: 'Bạn không có quyền xem thống kê bài nhạc này' });
+    // }
 
     const reviews = await Review.find({ track: req.params.id, status: 'approved' })
       .populate('reviewer', 'name avatarUrl totalReviews')

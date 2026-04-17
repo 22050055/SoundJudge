@@ -2,7 +2,7 @@ const router = require('express').Router();
 const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const { cloudinary } = require('../config/cloudinary');
-const { protect, authorize } = require('../middleware/auth');
+const { protect, authorize, optionalProtect } = require('../middleware/auth');
 const {
   uploadTrack,
   getTracks,
@@ -74,22 +74,22 @@ const handleUploadError = (err, req, res, next) => {
 //  ROUTES
 // ════════════════════════════════════════════════════════════
 
-// GET /api/tracks       — Tất cả user và admin xem được
+// GET /api/tracks       — Tất cả user bao gồm cả khách
 // POST /api/tracks      — user + admin upload được
 router
   .route('/')
   .post(protect, authorize('user', 'admin'), uploadTrackFields, handleUploadError, uploadTrack)
-  .get(protect, getTracks);
+  .get(optionalProtect, getTracks);
 
 // GET /api/tracks/:id   — Chi tiết bài nhạc
 // DELETE /api/tracks/:id — User xóa bài mình, admin xóa bất kỳ
 router
   .route('/:id')
-  .get(protect, getTrackById)
+  .get(optionalProtect, getTrackById)
   .delete(protect, deleteTrack);
 
-// GET /api/tracks/:id/stats — Chủ bài/admin xem thống kê
-router.get('/:id/stats', protect, getTrackStats);
+// GET /api/tracks/:id/stats — Ai cũng có thể xem điểm và đánh giá
+router.get('/:id/stats', optionalProtect, getTrackStats);
 
 // POST /api/tracks/:id/report — User báo cáo bài vi phạm
 router.post('/:id/report', protect, authorize('user'), reportTrack);
