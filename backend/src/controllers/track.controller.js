@@ -99,7 +99,8 @@ const getTracks = async (req, res) => {
     const filter = {};
 
     if (req.user.role !== 'admin') {
-      filter.status = 'published';
+      // Cho phép cả các trạng thái cũ chưa chạy migration để dễ dàng hiển thị bài nhạc hơn.
+      filter.status = { $in: ['published', 'pending', 'reviewing', 'completed'] };
     }
 
     // Lọc track của mình
