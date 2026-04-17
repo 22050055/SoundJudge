@@ -76,6 +76,10 @@ const protect = async (req, res, next) => {
     }
 
     // ── Thành công: gán user vào request để controller dùng ─
+    // Tự động mapping role cũ (artist/reviewer) sang "user" trên session memory cho những ai chưa chạy migration DB.
+    if (currentUser.role === 'artist' || currentUser.role === 'reviewer') {
+      currentUser.role = 'user';
+    }
     req.user = currentUser;
     next();
 

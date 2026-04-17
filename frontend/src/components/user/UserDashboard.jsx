@@ -71,21 +71,28 @@ export default function UserDashboard() {
   return (
     <>
       <style>{`
-        .ud-wrap { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .ud-layout { display: flex; max-width: 1250px; margin: 0 auto; padding: 2rem 1.5rem; gap: 2.5rem; }
+        @media(max-width: 768px) { .ud-layout { flex-direction: column; gap: 1.5rem; } }
+        
+        .ud-sidebar { width: 260px; flex-shrink: 0; }
+        @media(max-width: 768px) { .ud-sidebar { width: 100%; display: flex; overflow-x: auto; padding-bottom: 0.5rem; } }
+        
         .ud-header { margin-bottom: 2rem; }
         .ud-header h1 { font-size: 1.8rem; font-weight: 800; color: #f9fafb; margin: 0 0 0.25rem; }
         .ud-header p { color: #6b7280; font-size: 0.9rem; margin: 0; }
 
-        .ud-tabs { display: flex; gap: 0.5rem; margin-bottom: 2rem; border-bottom: 1px solid #1f2937; padding-bottom: 0; }
-        .ud-tab {
-          padding: 0.7rem 1.25rem; border-radius: 10px 10px 0 0;
-          font-size: 0.9rem; font-weight: 600; cursor: pointer;
+        .ud-sidebar-item {
+          display: flex; align-items: center; gap: 0.75rem; width: 100%; text-align: left;
+          padding: 0.9rem 1.25rem; border-radius: 12px;
+          font-size: 0.95rem; font-weight: 600; cursor: pointer;
           color: #6b7280; background: none; border: none;
-          border-bottom: 2px solid transparent;
-          transition: all 0.2s;
+          transition: all 0.2s; margin-bottom: 0.4rem;
         }
-        .ud-tab:hover { color: #d1d5db; }
-        .ud-tab.active { color: #e2c97e; border-bottom-color: #e2c97e; }
+        @media(max-width: 768px) { .ud-sidebar-item { white-space: nowrap; margin-bottom: 0; } }
+        .ud-sidebar-item:hover { color: #d1d5db; background: rgba(255,255,255,0.03); }
+        .ud-sidebar-item.active { color: #e2c97e; background: rgba(226,201,126,0.08); }
+        
+        .ud-main { flex: 1; min-width: 0; }
 
         /* Grid track */
         .track-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.25rem; }
@@ -167,27 +174,34 @@ export default function UserDashboard() {
         .spinner { text-align: center; padding: 3rem; color: #6b7280; font-size: 0.9rem; }
       `}</style>
 
-      <div className="ud-wrap">
-        <div className="ud-header">
-          <h1>🎵 Chào {user?.name?.split(' ')[0]}!</h1>
-          <p>Đăng nhạc, khám phá và đánh giá âm nhạc từ cộng đồng</p>
+      <div className="ud-layout">
+        
+        {/* ── SIDEBAR MENU ─────────────────────────────────── */}
+        <div className="ud-sidebar">
+          <div className="ud-header">
+            <h1>🎵 Chào {user?.name?.split(' ')[0]}!</h1>
+            <p>Khám phá âm nhạc cộng đồng</p>
+          </div>
+
+          <div className="ud-nav">
+            {[
+              { id: 'explore', label: '🌐 Khám phá' },
+              { id: 'my',      label: '🎵 Nhạc của tôi' },
+              { id: 'reviews', label: '✍️ Đánh giá của tôi' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                className={`ud-sidebar-item${activeTab === tab.id ? ' active' : ''}`}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="ud-tabs">
-          {[
-            { id: 'explore', label: '🌐 Khám phá' },
-            { id: 'my',      label: '🎵 Nhạc của tôi' },
-            { id: 'reviews', label: '✍️ Đánh giá của tôi' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              className={`ud-tab${activeTab === tab.id ? ' active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {/* ── MAIN CONTENT ────────────────────────────────── */}
+        <div className="ud-main">
 
         {/* ── TAB: KHÁM PHÁ ─────────────────────────────── */}
         {activeTab === 'explore' && (
@@ -312,6 +326,7 @@ export default function UserDashboard() {
             ))}
           </div>
         )}
+      </div>
       </div>
 
       {/* Report Modal */}
