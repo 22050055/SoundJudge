@@ -1,6 +1,6 @@
 # 🎵 SoundJudge — Nền tảng Đánh giá m nhạc (Community Platform)
 
-SoundJudge là một nền tảng âm nhạc mở được xây dựng dựa trên nguyên tắc **cộng đồng**. Mọi người dùng đều có thể tự do tải lên các sáng tác cá nhân, nghe và đánh giá âm nhạc của những thành viên khác, nhận xét chi tiết thông qua các tiêu chí chuyên môn và xây dựng uy tín cá nhân trên nền tảng.
+SoundJudge là một nền tảng âm nhạc mở được xây dựng dựa trên nguyên tắc **cộng đồng**. Mọi người dùng đều có thể tự do tải lên các sáng tác cá nhân, nghe và đánh giá âm nhạc của những thành viên khác thông qua hệ thống tiêu chí chuyên môn, từ đó xây dựng uy tín và kết nối trong cộng đồng yêu nhạc.
 
 ### 🌐 Demo Trực tuyến
 - **Frontend:** [https://soundjudge.pages.dev](https://soundjudge.pages.dev)
@@ -8,71 +8,101 @@ SoundJudge là một nền tảng âm nhạc mở được xây dựng dựa tr�
 
 ---
 
-## 📂 Cơ sở hạ tầng (Cấu trúc thư mục)
+## 🛠 Công nghệ Sử dụng (Tech Stack)
+
+### Frontend
+- **React.js** (Vite)
+- **React Router Dom** (Điều hướng)
+- **Axios** (Kết nối API)
+- **Chart.js / React-Chartjs-2** (Biểu đồ Radar/Spider Chart)
+- **CSS Modules / Vanilla CSS** (Giao diện tùy chỉnh)
+
+### Backend
+- **Node.js & Express**
+- **MongoDB & Mongoose** (Cơ sở dữ liệu NoSQL)
+- **JSON Web Token (JWT)** (Xác thực & Bảo mật)
+- **Cloudinary** (Lưu trữ file âm thanh và hình ảnh)
+- **Multer** (Xử lý upload file)
+
+---
+
+## ✨ Tính năng Chính
+
+### 👤 Cho Người dùng (User)
+- **Quản lý Hồ sơ:** Cập nhật thông tin cá nhân, ảnh đại diện.
+- **Tải lên Nhạc:** Đăng tải bài hát (.mp3) kèm ảnh bìa lên Cloudinary.
+- **Đánh giá Chuyên môn:** Đánh giá bài hát của người khác theo 5 tiêu chí: Giai điệu, Lời nhạc, Hòa âm, Nhịp điệu, Sản xuất.
+- **Biểu đồ Radar:** Hiển thị thống kê điểm số trực quan qua biểu đồ mạng nhện.
+- **Theo dõi (Follow):** Kết nối và nhận thông báo từ các nghệ sĩ yêu thích.
+- **Hệ thống Thông báo:** Nhận thông tin khi có người đánh giá nhạc hoặc theo dõi mình.
+
+### 🌎 Cho Khách (Guest)
+- **Khám phá:** Nghe nhạc trực tuyến không cần đăng nhập.
+- **Xem Thống kê:** Xem điểm số và nhận xét công khai của các bài hát.
+
+### 🛠 Cho Quản trị viên (Admin)
+- **Quản lý Người dùng:** Khóa/Mở khóa tài khoản vi phạm.
+- **Kiểm duyệt Nội dung:** Xử lý các báo cáo (Reports) từ cộng đồng, gỡ bỏ nhạc vi phạm quy chuẩn.
+- **Bảng điều khiển (Dashboard):** Thống kê tổng quan về hệ thống.
+
+---
+
+## 📂 Cấu trúc Thư mục
 
 ```text
 SoundJudge/
-│
 ├── backend/                          ← Server Node.js/Express
 │   ├── src/
-│   │   ├── config/
+│   │   ├── config/                   ← Cấu hình hệ thống
 │   │   │   ├── db.js                 ← Kết nối MongoDB
-│   │   │   └── cloudinary.js         ← Cấu hình lưu file nhạc/ảnh
-│   │   │
-│   │   ├── models/                   ← Schemas MongoDB (User, Track, Review, Report, Notification)
-│   │   ├── middleware/
-│   │   │   └── auth.js               ← Xác thực JWT + Phân quyền (Guest/User/Admin)
-│   │   ├── controllers/              ← Logic nghiệp vụ (Auth, Track, Review, Follow, Admin)
-│   │   ├── routes/                   ← Định nghĩa API endpoints (Gắn middleware bảo mật)
-│   │   └── app.js                    ← Entry point: Express app (CORS, JSON, Routes setup)
+│   │   │   └── cloudinary.js         ← Cấu hình Cloudinary (Audio/Images)
+│   │   ├── controllers/              ← Xử lý logic nghiệp vụ
+│   │   │   ├── admin.controller.js   ← Quản trị hệ thống & Báo cáo
+│   │   │   ├── auth.controller.js    ← Đăng ký, Đăng nhập, JWT
+│   │   │   ├── track.controller.js   ← Quản lý bài hát & Upload
+│   │   │   ├── review.controller.js  ← Đánh giá & Spider Chart
+│   │   │   └── follow.controller.js  ← Theo dõi nghệ sĩ
+│   │   ├── middleware/               ← Kiểm soát truy cập
+│   │   │   └── auth.js               ← Middleware xác thực & Phân quyền
+│   │   ├── models/                   ← Schema dữ liệu (Mongoose)
+│   │   │   ├── User.js, Track.js     ← Người dùng & Bài hát
+│   │   │   ├── Review.js, Report.js  ← Đánh giá & Báo cáo
+│   │   │   └── Notification.js       ← Thông báo hệ thống
+│   │   ├── routes/                   ← Định nghĩa API Endpoints
+│   │   │   ├── auth.routes.js
+│   │   │   ├── track.routes.js
+│   │   │   └── admin.routes.js
+│   │   └── app.js                    ← Cấu hình Express & Middleware chính
+│   ├── createAdmin.js                ← Script tạo Admin khởi tạo
 │   └── package.json
-│
 └── frontend/                         ← Client React.js (Vite)
     ├── src/
-    │   ├── main.jsx                  ← Entry point React
-    │   ├── App.jsx                   ← Master router (Quản lý User & Admin)
-    │   ├── api/                      ← Cấu hình Axios & API URL
-    │   ├── context/                  ← Global state (AuthContext)
+    │   ├── api/                      ← Cấu hình kết nối API
+    │   │   └── axiosConfig.js        ← Axios instance & Interceptors
     │   ├── components/
-    │   │   ├── common/               ← Navbar, RatingForm, ReportModal
-    │   │   ├── user/                 ← Dashboard, Profile, Upload, TrackStats (Spider Chart)
-    │   │   └── admin/                ← Admin Dashboard (Manage Reports, Users)
-    │   └── pages/                    ← AuthPages (Login/Register)
+    │   │   ├── common/               ← Components dùng chung
+    │   │   │   ├── Navbar.jsx        ← Thanh điều hướng
+    │   │   │   ├── MusicPlayer.jsx   ← Trình phát nhạc toàn cục
+    │   │   │   ├── RatingForm.jsx    ← Form đánh giá 5 tiêu chí
+    │   │   │   └── ReportModal.jsx   ← Modal báo cáo vi phạm
+    │   │   ├── user/                 ← Components cho người dùng
+    │   │   │   ├── UserDashboard.jsx ← Bảng điều khiển cá nhân
+    │   │   │   ├── TrackStats.jsx    ← Biểu đồ Radar thống kê
+    │   │   │   └── UploadTrack.jsx   ← Form tải nhạc lên
+    │   │   └── admin/
+    │   │       └── AdminDashboard.jsx← Quản lý Reports & Users
+    │   ├── context/                  ← Quản lý trạng thái toàn cục
+    │   │   └── AuthContext.jsx       ← Quản lý phiên đăng nhập
+    │   ├── pages/
+    │   │   └── AuthPages.jsx         ← Trang Đăng ký / Đăng nhập
+    │   ├── App.jsx                   ← Quản lý Routing (React Router)
+    │   └── main.jsx                  ← Điểm khởi đầu ứng dụng
+    └── package.json
 ```
 
 ---
 
-## 🔄 Luồng Nghiệp vụ Cộng đồng (Workflow)
-
-```text
-1. TIẾP CẬN MỞ (Public Access)
-Khách (Guest) truy cập trang web → Nghe nhạc trực tuyến và xem thống kê bài nhạc công khai.
-     ↓
-2. TẢI NHẠC & TƯƠNG TÁC
-User đăng ký/đăng nhập → Tải nhạc lên (mặc định [published]) và đánh giá (Rating) bài nhạc của người khác.
-     ↓
-3. HỆ THỐNG ĐIỂM & UY TÍN
-Số điểm (1-10) từ 5 tiêu chí chuyên môn (Giai điệu, Lời nhạc, Hòa âm, Nhịp điệu, Sản xuất) 
-được tổng hợp thành biểu đồ Radar (Spider Chart). User nhận Reputation khi có đánh giá chuyên sâu.
-     ↓
-4. QUẢN TRỊ & BÁO CÁO
-Nội dung vi phạm có thể bị Báo cáo bởi bất kỳ ai. Admin xem xét thủ công để hạ bài nhạc hoặc khóa tài khoản.
-```
-
-## 🔌 API Endpoints nổi bật
-
-| Method | Endpoint                        | Quyền truy cập | Mô tả                                    |
-|--------|---------------------------------|--------------|------------------------------------------|
-| POST   | /api/auth/register              | Public       | Đăng ký tài khoản (Mặc định: user)       |
-| GET    | /api/auth/me                    | User         | Lấy thông tin cá nhân hiện tại           |
-| POST   | /api/tracks                     | User         | Đăng nhạc mới (kèm file .mp3 & ảnh bìa)  |
-| GET    | /api/tracks                     | Public       | Khám phá kho nhạc cộng đồng              |
-| GET    | /api/tracks/:id/stats           | Public       | Xem biểu đồ điểm & Nhận xét chi tiết     |
-| POST   | /api/reviews                    | User         | Gửi đánh giá chuyên môn (min 10 ký tự)   |
-| POST   | /api/users/:id/follow           | User         | Theo dõi Artist yêu thích                |
-| PATCH  | /api/admin/reports/:id/resolve  | Admin        | Admin xử lý báo cáo vi phạm              |
-
-## 🚀 Cài đặt & Chạy (Environment Setups)
+## 🚀 Cài đặt & Khởi chạy
 
 ### 1. File môi trường (.env)
 
@@ -81,13 +111,13 @@ Nội dung vi phạm có thể bị Báo cáo bởi bất kỳ ai. Admin xem xé
 PORT=5000
 MONGODB_URI=your_mongodb_connection_string
 JWT_SECRET=your_secret_key
-CLOUDINARY_CLOUD_NAME=...
-CLOUDINARY_API_KEY=...
-CLOUDINARY_API_SECRET=...
+CLOUDINARY_CLOUD_NAME=your_name
+CLOUDINARY_API_KEY=your_key
+CLOUDINARY_API_SECRET=your_secret
 CLIENT_URL=http://localhost:5173
 ```
 
-**Frontend (`frontend/.env` - tạo file này):**
+**Frontend (`frontend/.env`):**
 ```env
 VITE_API_URL=http://localhost:5000/api
 ```
@@ -96,12 +126,26 @@ VITE_API_URL=http://localhost:5000/api
 ```bash
 cd backend
 npm install
-npm run dev # Chạy tại http://localhost:5000
+# Tạo tài khoản Admin mặc định (Email: admin@soundjudge.com | Pass: admin123456)
+node createAdmin.js 
+npm run dev
 ```
 
 ### 3. Khởi chạy Frontend
 ```bash
 cd frontend
 npm install
-npm run dev # Truy cập Web tại http://localhost:5173
+npm run dev
 ```
+
+---
+
+## 👥 Tác giả
+
+Dự án được phát triển bởi nhóm sinh viên:
+1. **Đoàn Ngọc Phan Trường** - 22050053
+2. **Ngô Mạnh Khang** - 22050055
+3. **Lê Quang Đức** - 22050119
+
+---
+*Dự án phục vụ mục đích học tập và nghiên cứu công nghệ.*
